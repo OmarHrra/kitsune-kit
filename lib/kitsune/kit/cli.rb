@@ -4,6 +4,7 @@ require_relative "commands/setup_user"
 require_relative "commands/provision"
 require_relative "commands/setup_firewall"
 require_relative "commands/setup_unattended"
+require_relative "commands/bootstrap"
 
 module Kitsune
   module Kit
@@ -19,6 +20,9 @@ module Kitsune
 
       desc "setup_unattended SUBCOMMAND", "Configure or rollback unattended-upgrades"
       subcommand "setup_unattended", Kitsune::Kit::Commands::SetupUnattended
+
+      desc "bootstrap SUBCOMMAND", "Run full server setup or rollback"
+      subcommand "bootstrap", Kitsune::Kit::Commands::Bootstrap
     end
   end
 end
