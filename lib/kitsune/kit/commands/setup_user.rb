@@ -71,6 +71,7 @@ module Kitsune
           def perform_setup(ssh)
             output = ssh.exec! <<~'EOH'
               set -e
+
               echo "✍🏻 Creating deploy user…"
               if ! id deploy &>/dev/null; then
                 if command -v adduser &>/dev/null; then
@@ -121,7 +122,8 @@ module Kitsune
           def perform_rollback_config(ssh)
             output = ssh.exec! <<~'EOH'
               set -e
-              echo "✍🏻 Backing up SSH config…"
+
+              echo "🔁 Backing up SSH config…"
               sudo test -f /etc/ssh/sshd_config.bak || sudo cp /etc/ssh/sshd_config /etc/ssh/sshd_config.bak && echo "   - sshd_config backed up"
 
               echo "✍🏻 Restoring SSH config…"
@@ -138,6 +140,7 @@ module Kitsune
           def perform_rollback_cleanup(ssh)
             output = ssh.exec! <<~'EOH'
               set -e
+
               echo "✍🏻 Removing sudoers file…"
               if [ -f /etc/sudoers.d/deploy ]; then
                 sudo rm -f /etc/sudoers.d/deploy && echo "   - /etc/sudoers.d/deploy removed"

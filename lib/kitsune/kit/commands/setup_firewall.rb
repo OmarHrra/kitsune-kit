@@ -84,7 +84,7 @@ module Kitsune
             output = ssh.exec! <<~EOH
               set -e
 
-              echo "✍🏻 Removing UFW rules…"
+              echo "🔁 Removing UFW rules…"
               delete_rule() {
                 local rule="$1"
                 if sudo ufw status | grep -q "$rule"; then

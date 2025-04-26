@@ -3,6 +3,7 @@ require "dotenv/load"
 require_relative "commands/setup_user"
 require_relative "commands/provision"
 require_relative "commands/setup_firewall"
+require_relative "commands/setup_unattended"
 
 module Kitsune
   module Kit
@@ -15,6 +16,9 @@ module Kitsune
 
       desc "setup_firewall SUBCOMMAND", "Configure or rollback UFW firewall rules"
       subcommand "setup_firewall", Kitsune::Kit::Commands::SetupFirewall
+
+      desc "setup_unattended SUBCOMMAND", "Configure or rollback unattended-upgrades"
+      subcommand "setup_unattended", Kitsune::Kit::Commands::SetupUnattended
     end
   end
 end
