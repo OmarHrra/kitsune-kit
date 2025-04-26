@@ -35,6 +35,8 @@ Gem::Specification.new do |spec|
 
   # Uncomment to register a new dependency of your gem
   spec.add_dependency "net-ssh"
+  spec.add_dependency "ed25519"
+  spec.add_dependency "bcrypt_pbkdf"
   spec.add_dependency "dotenv"
   spec.add_dependency "droplet_kit"
   spec.add_dependency "thor"
