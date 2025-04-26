@@ -6,6 +6,7 @@ require_relative "commands/setup_firewall"
 require_relative "commands/setup_unattended"
 require_relative "commands/bootstrap"
 require_relative "commands/setup_docker_prereqs"
+require_relative "commands/install_docker_engine"
 
 module Kitsune
   module Kit
@@ -27,6 +28,9 @@ module Kitsune
 
       desc "setup_docker_prereqs SUBCOMMAND", "Install or rollback docker prerequisites"
       subcommand "setup_docker_prereqs", Kitsune::Kit::Commands::SetupDockerPrereqs
+
+      desc "install_docker_engine SUBCOMMAND", "Install or rollback Docker Engine"
+      subcommand "install_docker_engine", Kitsune::Kit::Commands::InstallDockerEngine
     end
   end
 end
