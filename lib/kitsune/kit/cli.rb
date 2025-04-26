@@ -7,6 +7,7 @@ require_relative "commands/setup_unattended"
 require_relative "commands/bootstrap"
 require_relative "commands/setup_docker_prereqs"
 require_relative "commands/install_docker_engine"
+require_relative "commands/postinstall_docker"
 
 module Kitsune
   module Kit
@@ -31,6 +32,9 @@ module Kitsune
 
       desc "install_docker_engine SUBCOMMAND", "Install or rollback Docker Engine"
       subcommand "install_docker_engine", Kitsune::Kit::Commands::InstallDockerEngine
+
+      desc "postinstall_docker SUBCOMMAND", "Apply or rollback Docker post-installation tasks"
+      subcommand "postinstall_docker", Kitsune::Kit::Commands::PostinstallDocker
     end
   end
 end
