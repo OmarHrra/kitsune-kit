@@ -8,6 +8,7 @@ require_relative "commands/bootstrap"
 require_relative "commands/setup_docker_prereqs"
 require_relative "commands/install_docker_engine"
 require_relative "commands/postinstall_docker"
+require_relative "commands/bootstrap_docker"
 
 module Kitsune
   module Kit
@@ -35,6 +36,9 @@ module Kitsune
 
       desc "postinstall_docker SUBCOMMAND", "Apply or rollback Docker post-installation tasks"
       subcommand "postinstall_docker", Kitsune::Kit::Commands::PostinstallDocker
+
+      desc "bootstrap_docker SUBCOMMAND", "Run full docker setup or rollback"
+      subcommand "bootstrap_docker", Kitsune::Kit::Commands::BootstrapDocker
     end
   end
 end

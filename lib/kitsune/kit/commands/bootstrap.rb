@@ -1,5 +1,6 @@
 require "thor"
 require "open3"
+require_relative "../provisioner"
 
 module Kitsune
   module Kit
@@ -21,7 +22,7 @@ module Kitsune
             say "🏗️ Setting up server from scratch...", :green
             setup_sequence
           end
-        
+
           say "🎉 Done!", :green
         end
 
@@ -37,8 +38,21 @@ module Kitsune
           end
 
           def rollback_sequence
-            droplet_ip = fetch_droplet_ip
+            provisioner = Kitsune::Kit::Provisioner.new(
+              droplet_name: ENV['DROPLET_NAME'] || 'app-prod',
+              region:       ENV['REGION']       || 'sfo3',
+              size:         ENV['SIZE']         || 's-1vcpu-1gb',
+              image:        ENV['IMAGE']        || 'ubuntu-22-04-x64',
+              tag:          ENV['TAG_NAME']     || 'rails-prod',
+              ssh_key_id:   ENV['SSH_KEY_ID']
+            )
 
+            if (droplet = provisioner.find_droplet).nil?
+              say "💡 Nothing to rollback.", :green
+              return
+            end
+
+            droplet_ip = provisioner.send(:public_ip, droplet)
             say "→ Using Droplet IP: #{droplet_ip}", :cyan
 
             if ssh_accessible?(droplet_ip)
@@ -48,10 +62,11 @@ module Kitsune
               say "⏭️  Skipping unattended-upgrades and firewall rollback (no deploy user)", :yellow
             end
 
-            run_cli("setup_user:rollback", droplet_ip)
+            run_cli("setup_user rollback", droplet_ip)
 
             unless options[:keep_server]
-              run_cli("provision rollback", droplet_ip)
+              say "▶️ Running: kitsune kit provision rollback", :blue
+              Kitsune::Kit::CLI.start(%w[provision rollback])
             else
               say "⏭️  Skipping droplet deletion (--keep-server enabled)", :yellow
             end
@@ -69,17 +84,16 @@ module Kitsune
           end
 
           def run_cli(command, droplet_ip)
-            args = [
-              "bin/kit",
-              command,
+            say "▶️ Running: kitsune kit #{command} --server-ip #{droplet_ip}", :blue
+            subcommand, action = command.split(" ", 2)
+            Kitsune::Kit::CLI.start([
+              subcommand, action,
               "--server-ip", droplet_ip,
               "--ssh-port", options[:ssh_port],
               "--ssh-key-path", options[:ssh_key_path]
-            ]
-
-            full_command = args.join(' ')
-            say "▶️ Running: #{full_command}", :blue
-            system(full_command) || abort("❌ Command failed: #{full_command}")
+            ])
+          rescue SystemExit => e
+            abort "❌ Command failed: #{command} (exit #{e.status})"
           end
 
           def ssh_accessible?(droplet_ip)
