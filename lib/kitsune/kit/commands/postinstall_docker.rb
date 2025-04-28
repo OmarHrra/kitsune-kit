@@ -1,5 +1,7 @@
 require "thor"
 require "net/ssh"
+require_relative "../defaults"
+require_relative "../options_builder"
 
 module Kitsune
   module Kit
@@ -8,28 +10,40 @@ module Kitsune
         namespace "postinstall_docker"
 
         class_option :server_ip,    aliases: "-s", required: true, desc: "Server IP address or hostname"
-        class_option :ssh_port,     aliases: "-p", default: ENV['SSH_PORT'] || '22', desc: "SSH port"
-        class_option :ssh_key_path, aliases: "-k", default: ENV['SSH_KEY_PATH'] || '~/.ssh/id_rsa', desc: "Path to your private SSH key"
+        class_option :ssh_port,     aliases: "-p", desc: "SSH port"
+        class_option :ssh_key_path, aliases: "-k", desc: "Path to your private SSH key"
 
         desc "create", "Apply Docker post-install configuration (start service, add groups, create network)"
         def create
-          with_ssh_connection do |ssh|
+          filled_options = Kitsune::Kit::OptionsBuilder.build(
+            options,
+            required: [:server_ip],
+            defaults: Kitsune::Kit::Defaults.ssh
+          )
+
+          with_ssh_connection(filled_options) do |ssh|
             perform_setup(ssh)
           end
         end
 
         desc "rollback", "Undo Docker post-install configuration"
         def rollback
-          with_ssh_connection do |ssh|
+          filled_options = Kitsune::Kit::OptionsBuilder.build(
+            options,
+            required: [:server_ip],
+            defaults: Kitsune::Kit::Defaults.ssh
+          )
+
+          with_ssh_connection(filled_options) do |ssh|
             perform_rollback(ssh)
           end
         end
 
         no_commands do
-          def with_ssh_connection
-            server = options[:server_ip]
-            port   = options[:ssh_port]
-            key    = File.expand_path(options[:ssh_key_path])
+          def with_ssh_connection(filled_options)
+            server = filled_options[:server_ip]
+            port   = filled_options[:ssh_port]
+            key    = File.expand_path(filled_options[:ssh_key_path])
 
             say "🔑 Connecting as deploy@#{server}:#{port}", :green
             Net::SSH.start(server, "deploy", port: port, keys: [key], non_interactive: true, timeout: 5) do |ssh|

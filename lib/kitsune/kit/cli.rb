@@ -1,7 +1,9 @@
 require "thor"
-require "dotenv/load"
-require_relative "commands/setup_user"
+require_relative "env_loader"
+require_relative "commands/init"
+require_relative "commands/switch_env"
 require_relative "commands/provision"
+require_relative "commands/setup_user"
 require_relative "commands/setup_firewall"
 require_relative "commands/setup_unattended"
 require_relative "commands/bootstrap"
@@ -9,10 +11,25 @@ require_relative "commands/setup_docker_prereqs"
 require_relative "commands/install_docker_engine"
 require_relative "commands/postinstall_docker"
 require_relative "commands/bootstrap_docker"
+require_relative "commands/setup_postgres_docker"
 
 module Kitsune
   module Kit
     class CLI < Thor
+      def self.dispatch(m, args, options, config)
+        unless ["init", "switch_env"].include?(args.first)
+          Kitsune::Kit::EnvLoader.load!
+        end
+
+        super
+      end
+
+      desc "init", "Initialize Kitsune Kit project structure"
+      subcommand "init", Kitsune::Kit::Commands::Init
+
+      desc "switch_env SUBCOMMAND", "Switch the active Kitsune environment"
+      subcommand "switch_env", Kitsune::Kit::Commands::SwitchEnv
+
       desc "provision SUBCOMMAND", "Provisioning tasks"
       subcommand "provision", Kitsune::Kit::Commands::Provision
 
@@ -39,6 +56,9 @@ module Kitsune
 
       desc "bootstrap_docker SUBCOMMAND", "Run full docker setup or rollback"
       subcommand "bootstrap_docker", Kitsune::Kit::Commands::BootstrapDocker
+
+      desc "setup_postgres_docker SUBCOMMAND", "Setup PostgreSQL via Docker Compose on remote server"
+      subcommand "setup_postgres_docker", Kitsune::Kit::Commands::SetupPostgresDocker
     end
   end
 end

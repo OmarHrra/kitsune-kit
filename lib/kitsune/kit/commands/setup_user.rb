@@ -1,5 +1,7 @@
 require "thor"
 require "net/ssh"
+require_relative "../defaults"
+require_relative "../options_builder"
 
 module Kitsune
   module Kit
@@ -8,25 +10,37 @@ module Kitsune
         namespace "setup_user"
 
         class_option :server_ip,    aliases: "-s", required: true, desc: "Server IP address or hostname"
-        class_option :ssh_port,     aliases: "-p", default: ENV['SSH_PORT'] || '22', desc: "SSH port"
-        class_option :ssh_key_path, aliases: "-k", default: ENV['SSH_KEY_PATH'] || '~/.ssh/id_rsa', desc: "Path to your private SSH key"
+        class_option :ssh_port,     aliases: "-p", desc: "SSH port"
+        class_option :ssh_key_path, aliases: "-k", desc: "Path to your private SSH key"
 
         desc "create",   "Create and configure 'deploy' user on remote server"
         def create
-          with_ssh_connection(false) do |ssh|
+          filled_options = Kitsune::Kit::OptionsBuilder.build(
+            options,
+            required: [:server_ip],
+            defaults: Kitsune::Kit::Defaults.ssh
+          )
+
+          with_ssh_connection(false, filled_options) do |ssh|
             perform_setup(ssh)
           end
         end
 
         desc "rollback", "Revert configuration and remove 'deploy' user from remote server"
         def rollback
-          server = options[:server_ip]
-          port   = options[:ssh_port]
-          key    = File.expand_path(options[:ssh_key_path])
+          filled_options = Kitsune::Kit::OptionsBuilder.build(
+            options,
+            required: [:server_ip],
+            defaults: Kitsune::Kit::Defaults.ssh
+          )
+
+          server = filled_options[:server_ip]
+          port   = filled_options[:ssh_port]
+          key    = File.expand_path(filled_options[:ssh_key_path])
 
           # First, attempt SSH config restore as 'deploy'
           begin
-            with_ssh_connection(true) do |ssh|
+            with_ssh_connection(true, filled_options) do |ssh|
               perform_rollback_config(ssh)
             end
           rescue StandardError => e
@@ -42,14 +56,14 @@ module Kitsune
         end
 
         no_commands do
-          def with_ssh_connection(rollback)
-            server = options[:server_ip]
-            port   = options[:ssh_port]
-            key    = File.expand_path(options[:ssh_key_path])
-
+          def with_ssh_connection(rollback, filled_options)
+            server = filled_options[:server_ip]
+            port   = filled_options[:ssh_port]
+            key    = File.expand_path(filled_options[:ssh_key_path])
+          
             user = rollback ? 'deploy' : detect_remote_user(server, port, key)
             say "🔑 Connecting as #{user}@#{server}:#{port}", :green
-
+          
             Net::SSH.start(server, user, port: port, keys: [key], non_interactive: true, timeout: 5) do |ssh|
               yield ssh
             end

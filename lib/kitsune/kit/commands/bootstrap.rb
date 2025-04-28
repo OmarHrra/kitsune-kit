@@ -1,5 +1,7 @@
 require "thor"
 require "open3"
+require_relative "../defaults"
+require_relative "../options_builder"
 require_relative "../provisioner"
 
 module Kitsune
@@ -10,42 +12,45 @@ module Kitsune
 
         class_option :rollback, type: :boolean, default: false, desc: "Rollback the setup"
         class_option :keep_server, type: :boolean, default: false, desc: "Keep server after rollback"
-        class_option :ssh_port, type: :string, default: ENV['SSH_PORT'] || '22', desc: "SSH port for server"
-        class_option :ssh_key_path, type: :string, default: ENV['SSH_KEY_PATH'] || '~/.ssh/id_rsa', desc: "SSH private key path"
+        class_option :ssh_port, type: :string, desc: "SSH port for server"
+        class_option :ssh_key_path, type: :string, desc: "SSH private key path"
 
         desc "execute", "Run the full bootstrap process or rollback"
         def execute
-          if options[:rollback]
+          filled_options = Kitsune::Kit::OptionsBuilder.build(
+            options,
+            defaults: Kitsune::Kit::Defaults.ssh
+          )
+
+          if filled_options[:rollback]
             say "🔄 Rolling back server configurations...", :yellow
-            rollback_sequence
+            rollback_sequence(filled_options)
           else
             say "🏗️ Setting up server from scratch...", :green
-            setup_sequence
+            setup_sequence(filled_options)
           end
 
           say "🎉 Done!", :green
         end
 
         no_commands do
-          def setup_sequence
+          def setup_sequence(filled_options)
             droplet_ip = fetch_droplet_ip
 
             say "→ Droplet IP: #{droplet_ip}", :cyan
 
-            run_cli("setup_user create", droplet_ip)
-            run_cli("setup_firewall create", droplet_ip)
-            run_cli("setup_unattended create", droplet_ip)
+            run_cli("setup_user create", droplet_ip, filled_options)
+            run_cli("setup_firewall create", droplet_ip, filled_options)
+            run_cli("setup_unattended create", droplet_ip, filled_options)
           end
 
-          def rollback_sequence
-            provisioner = Kitsune::Kit::Provisioner.new(
-              droplet_name: ENV['DROPLET_NAME'] || 'app-prod',
-              region:       ENV['REGION']       || 'sfo3',
-              size:         ENV['SIZE']         || 's-1vcpu-1gb',
-              image:        ENV['IMAGE']        || 'ubuntu-22-04-x64',
-              tag:          ENV['TAG_NAME']     || 'rails-prod',
-              ssh_key_id:   ENV['SSH_KEY_ID']
+          def rollback_sequence(filled_options)
+            provision_options = Kitsune::Kit::OptionsBuilder.build(
+              {},
+              defaults: Kitsune::Kit::Defaults::infra
             )
+
+            provisioner = Kitsune::Kit::Provisioner.new(provision_options)
 
             if (droplet = provisioner.find_droplet).nil?
               say "💡 Nothing to rollback.", :green
@@ -55,16 +60,16 @@ module Kitsune
             droplet_ip = provisioner.send(:public_ip, droplet)
             say "→ Using Droplet IP: #{droplet_ip}", :cyan
 
-            if ssh_accessible?(droplet_ip)
-              run_cli("setup_unattended rollback", droplet_ip)
-              run_cli("setup_firewall rollback", droplet_ip)
+            if ssh_accessible?(droplet_ip, filled_options)
+              run_cli("setup_unattended rollback", droplet_ip, filled_options)
+              run_cli("setup_firewall rollback", droplet_ip, filled_options)
             else
               say "⏭️  Skipping unattended-upgrades and firewall rollback (no deploy user)", :yellow
             end
 
-            run_cli("setup_user rollback", droplet_ip)
+            run_cli("setup_user rollback", droplet_ip, filled_options)
 
-            unless options[:keep_server]
+            unless filled_options[:keep_server]
               say "▶️ Running: kitsune kit provision rollback", :blue
               Kitsune::Kit::CLI.start(%w[provision rollback])
             else
@@ -83,21 +88,28 @@ module Kitsune
             ip
           end
 
-          def run_cli(command, droplet_ip)
+          def run_cli(command, droplet_ip, filled_options)
             say "▶️ Running: kitsune kit #{command} --server-ip #{droplet_ip}", :blue
             subcommand, action = command.split(" ", 2)
             Kitsune::Kit::CLI.start([
               subcommand, action,
               "--server-ip", droplet_ip,
-              "--ssh-port", options[:ssh_port],
-              "--ssh-key-path", options[:ssh_key_path]
+              "--ssh-port", filled_options[:ssh_port],
+              "--ssh-key-path", filled_options[:ssh_key_path]
             ])
           rescue SystemExit => e
             abort "❌ Command failed: #{command} (exit #{e.status})"
           end
 
-          def ssh_accessible?(droplet_ip)
-            system("ssh -o BatchMode=yes -o StrictHostKeyChecking=accept-new -p #{options[:ssh_port]} -i #{File.expand_path(options[:ssh_key_path])} deploy@#{droplet_ip} true", out: File::NULL, err: File::NULL)
+          def ssh_accessible?(droplet_ip, filled_options)
+            system(
+              "ssh -o BatchMode=yes -o StrictHostKeyChecking=accept-new " \
+              "-p #{filled_options[:ssh_port]} " \
+              "-i #{File.expand_path(filled_options[:ssh_key_path])} " \
+              "deploy@#{droplet_ip} true",
+              out: File::NULL,
+              err: File::NULL
+            )
           end
         end
       end
