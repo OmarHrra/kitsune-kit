@@ -17,7 +17,7 @@ module Kitsune
   module Kit
     class CLI < Thor
       def self.dispatch(m, args, options, config)
-        unless ["init", "switch_env"].include?(args.first)
+        unless ["init", "switch_env", "help", nil].include?(args.first)
           Kitsune::Kit::EnvLoader.load!
         end
 

@@ -10,4 +10,7 @@
 
 # rspec failure tracking
 .rspec_status
+
 .env
+.DS_Store
+*.gem

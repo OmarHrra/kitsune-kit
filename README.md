@@ -1,43 +1,192 @@
-# Kitsune::Kit
+# Kitsune Kit 🦊
 
-TODO: Delete this and the text below, and describe your gem
+<p align="center">
+   <img src="kitsune-kit-logo.jpg" alt="Kitsune Logo" width="180"/>
+</p>
 
-Welcome to your new gem! In this directory, you'll find the files you need to be able to package up your Ruby library into a gem. Put your Ruby code in the file `lib/kitsune/kit`. To experiment with that code, run `bin/console` for an interactive prompt.
+**Kitsune Kit** is a Ruby gem that automates the provisioning, configuration, and setup of remote Linux servers (VPS) to host applications deployed with [Kamal](https://github.com/basecamp/kamal) or Docker Compose. It is designed to work on DigitalOcean infrastructure (for now), featuring reversible commands and a clear workflow.
 
-## Installation
+> 🛠️ *Ideal for Ruby developers who want to launch production without relying on other services.*
 
-TODO: Replace `UPDATE_WITH_YOUR_GEM_NAME_IMMEDIATELY_AFTER_RELEASE_TO_RUBYGEMS_ORG` with your gem name right after releasing it to RubyGems.org. Please do not do it earlier due to security reasons. Alternatively, replace this section with instructions to install your gem from git if you don't plan to release to RubyGems.org.
+---
 
-Install the gem and add to the application's Gemfile by executing:
+## 🔍 Main Features
 
-```bash
-bundle add UPDATE_WITH_YOUR_GEM_NAME_IMMEDIATELY_AFTER_RELEASE_TO_RUBYGEMS_ORG
+- 🧪 **Automatically provisions** a Droplet on DigitalOcean
+- 👤 Configures a secure, passwordless `deploy` user
+- 🔐 Applies firewall rules (UFW) for SSH, HTTP, HTTPS
+- ♻️ Enables automatic security updates (unattended-upgrades)
+- 🐳 Installs and configures Docker Engine and private networking
+- 🐘 Deploys PostgreSQL via Docker Compose with healthcheck and `.env`
+- 🔄 All steps can be rolled back (`--rollback`)
+- ⚡ Fast, reproducible and without relying on YAML or complex external tools
+
+---
+
+## 📦 Installation
+
+Add this line to your `Gemfile`:
+
+```ruby
+gem "kitsune-kit"
 ```
 
-If bundler is not being used to manage dependencies, install the gem by executing:
+Or install it manually:
 
 ```bash
-gem install UPDATE_WITH_YOUR_GEM_NAME_IMMEDIATELY_AFTER_RELEASE_TO_RUBYGEMS_ORG
+gem install kitsune-kit
 ```
 
-## Usage
+---
 
-TODO: Write usage instructions here
+## ⚙️ Prerequisites
 
-## Development
+1. Configure a DigitalOcean API token:
+    ```bash
+    export DO_API_TOKEN="your_token"
+    ```
 
-After checking out the repo, run `bin/setup` to install dependencies. Then, run `rake spec` to run the tests. You can also run `bin/console` for an interactive prompt that will allow you to experiment.
+2. Have the SSH key ID uploaded to DigitalOcean:
+    ```bash
+    export SSH_KEY_ID="123456"
+    ```
 
-To install this gem onto your local machine, run `bundle exec rake install`. To release a new version, update the version number in `version.rb`, and then run `bundle exec rake release`, which will create a git tag for the version, push git commits and the created tag, and push the `.gem` file to [rubygems.org](https://rubygems.org).
+3. Have the private key installed on your local machine:
+    ```bash
+    export SSH_KEY_PATH="~/.ssh/id_rsa"
+    ```
 
-## Contributing
+---
 
-Bug reports and pull requests are welcome on GitHub at https://github.com/[USERNAME]/kitsune-kit. This project is intended to be a safe, welcoming space for collaboration, and contributors are expected to adhere to the [code of conduct](https://github.com/[USERNAME]/kitsune-kit/blob/master/CODE_OF_CONDUCT.md).
+## 🚀 Getting Started
 
-## License
+Initialize the Kitsune project structure:
 
-The gem is available as open source under the terms of the [MIT License](https://opensource.org/licenses/MIT).
+```bash
+kit init
+```
 
-## Code of Conduct
+This will create the `.kitsune/` directory, multiple `.env` files, and the necessary Docker templates. Run it in your project's root directory.
 
-Everyone interacting in the Kitsune::Kit project's codebases, issue trackers, chat rooms and mailing lists is expected to follow the [code of conduct](https://github.com/[USERNAME]/kitsune-kit/blob/master/CODE_OF_CONDUCT.md).
+---
+
+## 🔧 Main Commands
+
+### 🧱 Server Provisioning
+
+```bash
+kit bootstrap execute
+```
+
+This creates a Droplet and executes:
+
+1. `setup_user create`
+2. `setup_firewall create`
+3. `setup_unattended create`
+
+### 🐳 Full Docker Installation
+
+```bash
+kit bootstrap_docker execute --server-ip 123.123.123.123
+```
+
+This applies in order:
+
+1. `setup_docker_prereqs create`
+2. `install_docker_engine create`
+3. `postinstall_docker create`
+
+### 🐘 Install PostgreSQL with Docker Compose
+
+```bash
+kit setup_postgres_docker create --server-ip 123.123.123.123
+```
+
+It will provide you with a `DATABASE_URL` ready for Rails or any other app.
+
+---
+
+## ♻️ Rollback for Each Step
+
+Each command accepts the `--rollback` flag. For example:
+
+```bash
+kit bootstrap execute --rollback --keep-server
+```
+
+This:
+- Reverts the server configuration (`unattended`, `firewall`, `user`)
+- Optionally **deletes the Droplet** (if you don't use `--keep-server`)
+
+The same applies to any other subcommand, such as:
+
+```bash
+kit bootstrap_docker execute --rollback --server-ip ...
+kit setup_postgres_docker rollback --server-ip ...
+```
+
+---
+
+## 🌎 Support for Multiple Environments
+
+Use `switch_env` to change between environments:
+
+```bash
+kit switch_env to production
+```
+
+This updates `.kitsune/kit.env` and creates (if it doesn't exist) `.kitsune/infra.production.env`.
+
+---
+
+## 🔗 Integration with Kamal
+
+Once the server is configured:
+
+1. Define your `kamal.yml` pointing to the created droplet
+2. Run `kamal setup` to initialize the deployment
+3. Use `kamal deploy` as usual
+
+---
+
+## 💡 Tips
+
+- Use `kit init` in every new project.
+- Customize `.kitsune/docker/postgres.yml` if you need additional services.
+
+---
+
+## 📘 Quick Example
+
+```bash
+# Initialize project structure
+kit init
+
+# Provision Droplet and configure everything
+kit bootstrap execute
+
+# Install Docker
+kit bootstrap_docker execute --server-ip 123.123.123.123
+
+# Set up the database
+kit setup_postgres_docker create --server-ip 123.123.123.123
+```
+
+---
+
+## 🧪 In Development
+
+- [ ] Support for other providers (Hetzner)
+- [ ] Create databases on another server
+
+---
+
+## 🔐 Security
+
+Never upload your `.env` files to public repositories. Kitsune does not encrypt them: it assumes you control your machine and your repo. Add `.kitsune/` to your project's `.gitignore`.
+
+---
+
+## 📄 License
+
+MIT License © [Omar Herrera / OmarHrra]
