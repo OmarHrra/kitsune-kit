@@ -1,7 +1,6 @@
 require "thor"
 require "net/ssh"
 require "tempfile"
-require "pry"
 require "fileutils"
 require "shellwords"
 require_relative "../defaults"
@@ -76,21 +75,21 @@ module Kitsune
               say "❌ Docker compose file not found at #{docker_compose_local}.", :red
               exit(1)
             end
-          
+
             docker_dir_remote = "$HOME/docker/postgres"
             docker_compose_remote = "#{docker_dir_remote}/docker-compose.yml"
             docker_env_remote = "#{docker_dir_remote}/.env"
             backup_marker = "/usr/local/backups/setup_postgres_docker.after"
-          
+
             # 1. Create base directory securely
             ssh.exec!("mkdir -p #{docker_dir_remote}")
             ssh.exec!("chmod 700 #{docker_dir_remote}")
-          
+
             # 2. Upload docker-compose.yml
             say "📦 Uploading docker-compose.yml to remote server...", :cyan
             content_compose = File.read(docker_compose_local)
             upload_file(ssh, content_compose, docker_compose_remote)
-          
+
             # 3. Create .env file for docker-compose based on postgres_defaults
             say "📦 Creating .env file for Docker Compose...", :cyan
             env_content = <<~ENVFILE
@@ -101,21 +100,21 @@ module Kitsune
               POSTGRES_IMAGE=#{postgres_defaults[:postgres_image]}
             ENVFILE
             upload_file(ssh, env_content, docker_env_remote)
-          
+
             # 4. Secure file permissions
             ssh.exec!("chmod 600 #{docker_compose_remote} #{docker_env_remote}")
-          
+
             # 5. Create backup marker
             ssh.exec!("sudo mkdir -p /usr/local/backups && sudo touch #{backup_marker}")
-          
+
             # 6. Validate docker-compose.yml
             say "🔍 Validating docker-compose.yml...", :cyan
             validation_output = ssh.exec!("cd #{docker_dir_remote} && docker compose config")
             say validation_output, :cyan
-          
+
             # 7. Check if container is running
             container_status = ssh.exec!("docker ps --filter 'name=postgres' --format '{{.Status}}'").strip
-          
+
             if container_status.empty?
               say "▶️ No running container. Running docker compose up...", :cyan
               ssh.exec!("cd #{docker_dir_remote} && docker compose up -d")
@@ -129,9 +128,7 @@ module Kitsune
               end
             end
 
-            # 8. Show final container status
             say "📋 Final container status (docker compose ps):", :cyan
-            docker_dir_remote = "$HOME/docker/postgres"
             docker_ps_output = ssh.exec!("cd #{docker_dir_remote} && docker compose ps --format json")
 
             if docker_ps_output.nil? || docker_ps_output.strip.empty? || docker_ps_output.include?("no configuration file")
@@ -179,6 +176,21 @@ module Kitsune
             unless success
               say "❌ PostgreSQL did not become ready after #{max_attempts} attempts.", :red
             end
+
+            # 10. Allow PostgreSQL port through firewall (ufw)
+            say "🛡️ Configuring firewall to allow PostgreSQL (port #{postgres_defaults[:postgres_port]})...", :cyan
+            firewall = <<~EOH
+              if command -v ufw >/dev/null; then
+                if ! sudo ufw status | grep -q "#{postgres_defaults[:postgres_port]}"; then
+                  sudo ufw allow #{postgres_defaults[:postgres_port]}
+                else
+                  echo "🔸 Port #{postgres_defaults[:postgres_port]} is already allowed in ufw."
+                fi
+              else
+                echo "⚠️ ufw not found. Skipping firewall configuration."
+              fi
+            EOH
+            ssh.exec!(firewall)
           end
 
           def perform_rollback(ssh)
@@ -198,6 +210,11 @@ module Kitsune
                 echo "🧹 Cleaning up files..."
                 rm -rf "$BASE_DIR"
                 sudo rm -f "$AFTER_FILE"
+
+                if command -v ufw >/dev/null; then
+                  echo "🛡️ Removing PostgreSQL port from firewall..."
+                  sudo ufw delete allow 5432 || true
+                fi
               else
                 echo "🔸 Nothing to rollback"
               fi
