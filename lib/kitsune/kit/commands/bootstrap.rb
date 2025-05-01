@@ -1,5 +1,5 @@
 require "thor"
-require "open3"
+require "stringio"
 require_relative "../defaults"
 require_relative "../options_builder"
 require_relative "../provisioner"
@@ -78,18 +78,21 @@ module Kitsune
           end
 
           def fetch_droplet_ip
-            output, status = Open3.capture2e("bin/kit provision create")
-            unless status.success?
-              abort "❌ Error fetching or creating droplet"
+            out = StringIO.new
+            $stdout = out
+            begin
+              Kitsune::Kit::CLI.start(["provision", "create"])
+            ensure
+              $stdout = STDOUT
             end
-
-            ip = output.match(/(\d{1,3}\.){3}\d{1,3}/).to_s
-            abort "❌ Could not detect droplet IP!" if ip.empty?
+          
+            ip = out.string[/(\d{1,3}\.){3}\d{1,3}/]
+            abort "❌ Could not detect droplet IP!" if ip.nil? || ip.empty?
             ip
           end
 
           def run_cli(command, droplet_ip, filled_options)
-            say "▶️ Running: kitsune kit #{command} --server-ip #{droplet_ip}", :blue
+            say "\n▶️ Running: kitsune kit #{command} --server-ip #{droplet_ip}", :blue
             subcommand, action = command.split(" ", 2)
             Kitsune::Kit::CLI.start([
               subcommand, action,

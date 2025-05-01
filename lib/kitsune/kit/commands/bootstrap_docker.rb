@@ -47,7 +47,7 @@ module Kitsune
           end
 
           def run_cli(command, filled_options)
-            say "▶️ Running: kitsune kit #{command} --server-ip #{filled_options[:server_ip]}", :blue
+            say "\n▶️ Running: kitsune kit #{command} --server-ip #{filled_options[:server_ip]}", :blue
 
             subcommand, action = command.split(" ", 2)
             Kitsune::Kit::CLI.start([

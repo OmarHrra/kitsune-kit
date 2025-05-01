@@ -86,6 +86,7 @@ module Kitsune
                 sudo apt-get install -y "\${TARGET_PKGS[@]}"
                 sudo touch "$AFTER_FILE" && echo "   - marker created at $AFTER_FILE"
               else
+                echo "🔁 Already set up, ensuring latest"
                 sudo apt-get update -y
                 sudo apt-get install -y "\${TARGET_PKGS[@]}"
                 echo "✅ Prerequisites are current"

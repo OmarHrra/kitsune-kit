@@ -1,5 +1,4 @@
 require "dotenv"
-
 module Kitsune
   module Kit
     class EnvLoader
@@ -19,7 +18,8 @@ module Kitsune
 
         if found
           Dotenv.load(found)
-          puts "🧪 Loaded Kitsune environment from #{found}"
+          puts "🧪 Loaded Kitsune environment from #{found.light_cyan}"
+          puts "=======================================================================\n".light_cyan
         else
           puts "⚠️  No Kitsune infra config found for environment '#{env}' (looked for infra.#{env}.env and infra.env)"
         end

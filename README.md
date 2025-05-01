@@ -72,7 +72,7 @@ This will create the `.kitsune/` directory, multiple `.env` files, and the neces
 
 ## 🔧 Main Commands
 
-### 🧱 Server Provisioning
+### 🏗️ Server Provisioning
 
 ```bash
 kit bootstrap execute

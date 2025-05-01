@@ -7,4 +7,9 @@ gemspec
 
 gem "rake", "~> 13.0"
 
-gem "rspec", "~> 3.0"
+group :development, :test do
+  gem "rspec", "~> 3.12"
+  gem "aruba", "~> 2.2"
+  gem "pry", "~> 0.14"
+  gem "pry-stack_explorer", "~> 0.6.0"
+end

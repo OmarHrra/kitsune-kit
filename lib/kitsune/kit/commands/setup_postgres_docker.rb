@@ -168,7 +168,7 @@ module Kitsune
                 success = true
                 break
               else
-                say "⏳ Attempt #{attempt}/#{max_attempts}: PostgreSQL not ready yet, retrying in 5 seconds...", :yellow
+                say "⏳ PostgreSQL not ready yet, retrying in 5 seconds... (#{attempt + 1}/#{max_attempts})", :yellow
                 sleep 5
               end
             end
@@ -216,7 +216,7 @@ module Kitsune
                   sudo ufw delete allow 5432 || true
                 fi
               else
-                echo "🔸 Nothing to rollback"
+                echo "💡 Nothing to rollback"
               fi
 
               echo "✅ Rollback completed"
