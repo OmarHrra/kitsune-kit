@@ -8,6 +8,7 @@ require_relative "commands/setup_user"
 require_relative "commands/setup_firewall"
 require_relative "commands/setup_unattended"
 require_relative "commands/setup_swap"
+require_relative "commands/setup_do_metrics"
 require_relative "commands/bootstrap"
 require_relative "commands/setup_docker_prereqs"
 require_relative "commands/install_docker_engine"
@@ -46,6 +47,9 @@ module Kitsune
 
       desc "setup_swap SUBCOMMAND", "Configure or rollback swap memory"
       subcommand "setup_swap", Kitsune::Kit::Commands::SetupSwap
+
+      desc "setup_do_metrics SUBCOMMAND", "Install or rollback DigitalOcean Metrics Agent"
+      subcommand "setup_do_metrics", Kitsune::Kit::Commands::SetupDoMetrics
 
       desc "bootstrap SUBCOMMAND", "Run full server setup or rollback"
       subcommand "bootstrap", Kitsune::Kit::Commands::Bootstrap

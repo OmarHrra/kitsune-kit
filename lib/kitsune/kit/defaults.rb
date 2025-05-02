@@ -28,6 +28,10 @@ module Kitsune
         disable_swap: false
       }.freeze
 
+      METRICS = {
+        enable_do_metrics: true
+      }.freeze
+
       def self.infra
         {
           droplet_name: ENV.fetch('DROPLET_NAME', DROPLET[:droplet_name]),
@@ -63,6 +67,12 @@ module Kitsune
           swap_size_gb: ENV.fetch("SWAP_SIZE_GB", SYSTEM[:swap_size_gb]).to_i,
           swap_swappiness: ENV.fetch("SWAP_SWAPPINESS", SYSTEM[:swap_swappiness]).to_i,
           disable_swap: ENV.fetch("DISABLE_SWAP", SYSTEM[:disable_swap].to_s) == "true"
+        }
+      end
+
+      def self.metrics
+        {
+          enable_do_metrics: ENV.fetch("ENABLE_DO_METRICS", METRICS[:enable_do_metrics].to_s) == "true"
         }
       end
     end

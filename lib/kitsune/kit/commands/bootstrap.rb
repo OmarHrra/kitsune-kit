@@ -43,6 +43,7 @@ module Kitsune
             run_cli("setup_firewall create", droplet_ip, filled_options)
             run_cli("setup_unattended create", droplet_ip, filled_options)
             run_cli("setup_swap create", droplet_ip, filled_options)
+            run_cli("setup_do_metrics create", droplet_ip, filled_options)
           end
 
           def rollback_sequence(filled_options)
@@ -60,6 +61,8 @@ module Kitsune
 
             droplet_ip = provisioner.send(:public_ip, droplet)
             say "→ Using Droplet IP: #{droplet_ip}", :cyan
+
+            run_cli("setup_do_metrics rollback", droplet_ip, filled_options)
 
             if ssh_accessible?(droplet_ip, filled_options)
               run_cli("setup_unattended rollback", droplet_ip, filled_options)
