@@ -42,6 +42,7 @@ module Kitsune
             run_cli("setup_user create", droplet_ip, filled_options)
             run_cli("setup_firewall create", droplet_ip, filled_options)
             run_cli("setup_unattended create", droplet_ip, filled_options)
+            run_cli("setup_swap create", droplet_ip, filled_options)
           end
 
           def rollback_sequence(filled_options)
@@ -67,6 +68,7 @@ module Kitsune
               say "⏭️  Skipping unattended-upgrades and firewall rollback (no deploy user)", :yellow
             end
 
+            run_cli("setup_swap rollback", droplet_ip, filled_options)
             run_cli("setup_user rollback", droplet_ip, filled_options)
 
             unless filled_options[:keep_server]

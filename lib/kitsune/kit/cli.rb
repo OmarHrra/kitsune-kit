@@ -7,6 +7,7 @@ require_relative "commands/provision"
 require_relative "commands/setup_user"
 require_relative "commands/setup_firewall"
 require_relative "commands/setup_unattended"
+require_relative "commands/setup_swap"
 require_relative "commands/bootstrap"
 require_relative "commands/setup_docker_prereqs"
 require_relative "commands/install_docker_engine"
@@ -42,6 +43,9 @@ module Kitsune
 
       desc "setup_unattended SUBCOMMAND", "Configure or rollback unattended-upgrades"
       subcommand "setup_unattended", Kitsune::Kit::Commands::SetupUnattended
+
+      desc "setup_swap SUBCOMMAND", "Configure or rollback swap memory"
+      subcommand "setup_swap", Kitsune::Kit::Commands::SetupSwap
 
       desc "bootstrap SUBCOMMAND", "Run full server setup or rollback"
       subcommand "bootstrap", Kitsune::Kit::Commands::Bootstrap

@@ -22,6 +22,12 @@ module Kitsune
         image: "postgres:15"
       }.freeze
 
+      SYSTEM = {
+        swap_size_gb: 2,
+        swap_swappiness: 10,
+        disable_swap: false
+      }.freeze
+
       def self.infra
         {
           droplet_name: ENV.fetch('DROPLET_NAME', DROPLET[:droplet_name]),
@@ -49,6 +55,14 @@ module Kitsune
           postgres_password: ENV.fetch('POSTGRES_PASSWORD', POSTGRES[:password]),
           postgres_port: ENV.fetch('POSTGRES_PORT', POSTGRES[:port]),
           postgres_image: ENV.fetch('POSTGRES_IMAGE', POSTGRES[:image])
+        }
+      end
+
+      def self.system
+        {
+          swap_size_gb: ENV.fetch("SWAP_SIZE_GB", SYSTEM[:swap_size_gb]).to_i,
+          swap_swappiness: ENV.fetch("SWAP_SWAPPINESS", SYSTEM[:swap_swappiness]).to_i,
+          disable_swap: ENV.fetch("DISABLE_SWAP", SYSTEM[:disable_swap].to_s) == "true"
         }
       end
     end
