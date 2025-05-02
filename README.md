@@ -16,6 +16,8 @@
 - 👤 Configures a secure, passwordless `deploy` user
 - 🔐 Applies firewall rules (UFW) for SSH, HTTP, HTTPS
 - ♻️ Enables automatic security updates (unattended-upgrades)
+- 💾 Configures swap space for better performance
+- 📊 Installs [DigitalOcean monitoring agent](https://docs.digitalocean.com/products/monitoring/how-to/install-agent/)
 - 🐳 Installs and configures Docker Engine and private networking
 - 🐘 Deploys PostgreSQL via Docker Compose with healthcheck and `.env`
 - 🔄 All steps can be rolled back (`--rollback`)
@@ -83,6 +85,8 @@ This creates a Droplet and executes:
 1. `setup_user create`
 2. `setup_firewall create`
 3. `setup_unattended create`
+4. `setup_swap`
+5. `setup_do_metrics`
 
 ### 🐳 Full Docker Installation
 
