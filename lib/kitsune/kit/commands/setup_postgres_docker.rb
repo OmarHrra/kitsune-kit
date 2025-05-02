@@ -46,6 +46,8 @@ module Kitsune
 
         desc "rollback", "Remove PostgreSQL Docker setup from remote server"
         def rollback
+          postgres_defaults = Kitsune::Kit::Defaults.postgres
+
           filled_options = Kitsune::Kit::OptionsBuilder.build(
             options,
             required: [:server_ip],
@@ -53,7 +55,7 @@ module Kitsune
           )
 
           with_ssh_connection(filled_options) do |ssh|
-            perform_rollback(ssh)
+            perform_rollback(ssh, postgres_defaults)
           end
         end
 
@@ -184,7 +186,7 @@ module Kitsune
                 if ! sudo ufw status | grep -q "#{postgres_defaults[:postgres_port]}"; then
                   sudo ufw allow #{postgres_defaults[:postgres_port]}
                 else
-                  echo "🔸 Port #{postgres_defaults[:postgres_port]} is already allowed in ufw."
+                  echo "💡 Port #{postgres_defaults[:postgres_port]} is already allowed in ufw."
                 fi
               else
                 echo "⚠️ ufw not found. Skipping firewall configuration."
@@ -193,7 +195,7 @@ module Kitsune
             ssh.exec!(firewall)
           end
 
-          def perform_rollback(ssh)
+          def perform_rollback(ssh, postgres_defaults)
             output = ssh.exec! <<~EOH
               set -e
 
@@ -213,7 +215,7 @@ module Kitsune
 
                 if command -v ufw >/dev/null; then
                   echo "🛡️ Removing PostgreSQL port from firewall..."
-                  sudo ufw delete allow 5432 || true
+                  sudo ufw delete allow #{postgres_defaults[:postgres_port]} || true
                 fi
               else
                 echo "💡 Nothing to rollback"

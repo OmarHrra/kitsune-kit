@@ -8,6 +8,9 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     ports:
       - "${POSTGRES_PORT:-5432}:5432"
+    command: postgres -c listen_addresses='*'
+    networks:
+      - private
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
@@ -18,3 +21,7 @@ services:
 
 volumes:
   pgdata:
+
+networks:
+  private:
+    driver: bridge
