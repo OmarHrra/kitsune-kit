@@ -15,6 +15,7 @@ require_relative "commands/install_docker_engine"
 require_relative "commands/postinstall_docker"
 require_relative "commands/bootstrap_docker"
 require_relative "commands/setup_postgres_docker"
+require_relative "commands/setup_redis_docker"
 
 module Kitsune
   module Kit
@@ -78,6 +79,9 @@ module Kitsune
 
       desc "setup_postgres_docker SUBCOMMAND", "Setup PostgreSQL via Docker Compose on remote server"
       subcommand "setup_postgres_docker", Kitsune::Kit::Commands::SetupPostgresDocker
+
+      desc "setup_redis_docker SUBCOMMAND", "Setup Redis via Docker Compose on remote server"
+      subcommand "setup_redis_docker", Kitsune::Kit::Commands::SetupRedisDocker
     end
   end
 end

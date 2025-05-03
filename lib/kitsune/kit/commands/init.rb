@@ -124,8 +124,8 @@ module Kitsune
           end
 
           def copy_docker_templates
-            dest_path = ".kitsune/docker/postgres.yml"
-            copy_with_prompt(blueprint_path("docker/postgres.yml"), dest_path)
+            copy_with_prompt(blueprint_path("docker/postgres.yml"), ".kitsune/docker/postgres.yml")
+            copy_with_prompt(blueprint_path("docker/redis.yml"), ".kitsune/docker/redis.yml")
           end
 
           def copy_with_prompt(source, destination)

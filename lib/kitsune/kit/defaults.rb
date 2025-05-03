@@ -32,6 +32,11 @@ module Kitsune
         enable_do_metrics: true
       }.freeze
 
+      REDIS = {
+        port: "6379",
+        password: "redis:7.2"
+      }.freeze
+
       def self.infra
         {
           droplet_name: ENV.fetch('DROPLET_NAME', DROPLET[:droplet_name]),
@@ -59,6 +64,13 @@ module Kitsune
           postgres_password: ENV.fetch('POSTGRES_PASSWORD', POSTGRES[:password]),
           postgres_port: ENV.fetch('POSTGRES_PORT', POSTGRES[:port]),
           postgres_image: ENV.fetch('POSTGRES_IMAGE', POSTGRES[:image])
+        }
+      end
+
+      def self.redis
+        {
+          redis_port: ENV.fetch("REDIS_PORT", REDIS[:port]),
+          redis_password: ENV.fetch("REDIS_PASSWORD", REDIS[:password])
         }
       end
 
