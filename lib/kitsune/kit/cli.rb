@@ -20,11 +20,21 @@ module Kitsune
   module Kit
     class CLI < Thor
       def self.dispatch(m, args, options, config)
-        unless ["init", "switch_env", "help", nil].include?(args.first)
+        if args.include?("-v") || args.include?("--version")
+          puts "Kitsune Kit v#{Kitsune::Kit::VERSION}"
+          exit(0)
+        end
+      
+        unless ["version", "init", "switch_env", "help", nil].include?(args.first)
           Kitsune::Kit::EnvLoader.load!
         end
 
         super
+      end
+
+      desc "version", "Show Kitsune Kit version"
+      def version
+        say "Kitsune Kit v#{Kitsune::Kit::VERSION}", :green
       end
 
       desc "init", "Initialize Kitsune Kit project structure"
