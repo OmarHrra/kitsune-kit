@@ -19,7 +19,7 @@ module Kitsune
         user: "postgres",
         password: "secret",
         port: "5432",
-        image: "postgres:15"
+        image: "postgres:17"
       }.freeze
 
       SYSTEM = {

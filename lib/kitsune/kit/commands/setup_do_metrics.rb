@@ -26,7 +26,7 @@ module Kitsune
             defaults: Kitsune::Kit::Defaults.ssh
           )
 
-          with_ssh(filled_options) do |ssh|
+          with_ssh_connection(filled_options) do |ssh|
             install_agent(ssh)
           end
         end
@@ -39,13 +39,13 @@ module Kitsune
             defaults: Kitsune::Kit::Defaults.ssh
           )
 
-          with_ssh(filled_options) do |ssh|
+          with_ssh_connection(filled_options) do |ssh|
             uninstall_agent(ssh)
           end
         end
 
         no_commands do
-          def with_ssh(filled_options)
+          def with_ssh_connection(filled_options)
             Net::SSH.start(
               filled_options[:server_ip],
               "deploy",

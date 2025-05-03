@@ -36,11 +36,7 @@ module Kitsune
           )
 
           with_ssh_connection(filled_options) do |ssh|
-            perform_setup(ssh, postgres_defaults)
-
-            database_url = build_database_url(filled_options, postgres_defaults)
-            say "🔗 Your DATABASE_URL is:\t", :cyan
-            say database_url, :green
+            perform_setup(ssh, postgres_defaults, filled_options)
           end
         end
 
@@ -71,26 +67,21 @@ module Kitsune
             end
           end
 
-          def perform_setup(ssh, postgres_defaults)
-            docker_compose_local = ".kitsune/docker/postgres.yml"
-            unless File.exist?(docker_compose_local)
-              say "❌ Docker compose file not found at #{docker_compose_local}.", :red
-              exit(1)
-            end
+          def perform_setup(ssh, postgres_defaults, filled_options)
+            local_compose = ".kitsune/docker/postgres.yml"
+            remote_dir = "$HOME/docker/postgres"
+            compose_remote = "#{remote_dir}/docker-compose.yml"
+            env_remote = "#{remote_dir}/.env"
+            marker = "/usr/local/backups/setup_postgres_docker.after"
 
-            docker_dir_remote = "$HOME/docker/postgres"
-            docker_compose_remote = "#{docker_dir_remote}/docker-compose.yml"
-            docker_env_remote = "#{docker_dir_remote}/.env"
-            backup_marker = "/usr/local/backups/setup_postgres_docker.after"
+            abort "❌ Missing #{local_compose}" unless File.exist?(local_compose)
 
             # 1. Create base directory securely
-            ssh.exec!("mkdir -p #{docker_dir_remote}")
-            ssh.exec!("chmod 700 #{docker_dir_remote}")
+            ssh.exec!("mkdir -p #{remote_dir} && chmod 700 #{remote_dir}")
 
             # 2. Upload docker-compose.yml
-            say "📦 Uploading docker-compose.yml to remote server...", :cyan
-            content_compose = File.read(docker_compose_local)
-            upload_file(ssh, content_compose, docker_compose_remote)
+            say "📦 Uploading docker-compose.yml to #{remote_dir}", :cyan
+            upload_file(ssh, File.read(local_compose), compose_remote)
 
             # 3. Create .env file for docker-compose based on postgres_defaults
             say "📦 Creating .env file for Docker Compose...", :cyan
@@ -101,17 +92,17 @@ module Kitsune
               POSTGRES_PORT=#{postgres_defaults[:postgres_port]}
               POSTGRES_IMAGE=#{postgres_defaults[:postgres_image]}
             ENVFILE
-            upload_file(ssh, env_content, docker_env_remote)
+            upload_file(ssh, env_content, env_remote)
 
             # 4. Secure file permissions
-            ssh.exec!("chmod 600 #{docker_compose_remote} #{docker_env_remote}")
+            ssh.exec!("chmod 600 #{compose_remote} #{env_remote}")
 
             # 5. Create backup marker
-            ssh.exec!("sudo mkdir -p /usr/local/backups && sudo touch #{backup_marker}")
+            ssh.exec!("sudo mkdir -p /usr/local/backups && sudo touch #{marker}")
 
             # 6. Validate docker-compose.yml
             say "🔍 Validating docker-compose.yml...", :cyan
-            validation_output = ssh.exec!("cd #{docker_dir_remote} && docker compose config")
+            validation_output = ssh.exec!("cd #{remote_dir} && docker compose config")
             say validation_output, :cyan
 
             # 7. Check if container is running
@@ -119,19 +110,20 @@ module Kitsune
 
             if container_status.empty?
               say "▶️ No running container. Running docker compose up...", :cyan
-              ssh.exec!("cd #{docker_dir_remote} && docker compose up -d")
+              ssh.exec!("cd #{remote_dir} && docker compose up -d")
             else
               say "⚠️ PostgreSQL container is already running.", :yellow
               if yes?("🔁 Recreate the container with updated configuration? [y/N]", :yellow)
                 say "🔄 Recreating container...", :cyan
-                ssh.exec!("cd #{docker_dir_remote} && docker compose down -v && docker compose up -d")
+                ssh.exec!("cd #{remote_dir} && docker compose down -v && docker compose up -d")
               else
                 say "⏩ Keeping existing container.", :cyan
               end
             end
 
+            # 8. Check container status
             say "📋 Final container status (docker compose ps):", :cyan
-            docker_ps_output = ssh.exec!("cd #{docker_dir_remote} && docker compose ps --format json")
+            docker_ps_output = ssh.exec!("cd #{remote_dir} && docker compose ps --format json")
 
             if docker_ps_output.nil? || docker_ps_output.strip.empty? || docker_ps_output.include?("no configuration file")
               say "⚠️ docker compose ps returned no valid output.", :yellow
@@ -168,9 +160,13 @@ module Kitsune
               if healthcheck.include?("accepting connections")
                 say "✅ PostgreSQL is up and accepting connections! (attempt #{attempt})", :green
                 success = true
+
+                database_url = build_database_url(filled_options, postgres_defaults)
+                say "🔗 Your DATABASE_URL is:\t", :cyan
+                say database_url, :green
                 break
               else
-                say "⏳ PostgreSQL not ready yet, retrying in 5 seconds... (#{attempt + 1}/#{max_attempts})", :yellow
+                say "⏳ PostgreSQL not ready yet, retrying in 5 seconds... (#{attempt}/#{max_attempts})", :yellow
                 sleep 5
               end
             end
@@ -181,7 +177,7 @@ module Kitsune
 
             # 10. Allow PostgreSQL port through firewall (ufw)
             say "🛡️ Configuring firewall to allow PostgreSQL (port #{postgres_defaults[:postgres_port]})...", :cyan
-            firewall = <<~EOH
+            output = ssh.exec! <<~EOH
               if command -v ufw >/dev/null; then
                 if ! sudo ufw status | grep -q "#{postgres_defaults[:postgres_port]}"; then
                   sudo ufw allow #{postgres_defaults[:postgres_port]}
@@ -192,7 +188,9 @@ module Kitsune
                 echo "⚠️ ufw not found. Skipping firewall configuration."
               fi
             EOH
-            ssh.exec!(firewall)
+            say output
+
+            say "✅ PostgreSQL setup completed successfully!", :green
           end
 
           def perform_rollback(ssh, postgres_defaults)
@@ -227,9 +225,9 @@ module Kitsune
           end
 
           def upload_file(ssh, content, remote_path)
-            escaped_content = Shellwords.escape(content)
+            escaped = Shellwords.escape(content)
             ssh.exec!("mkdir -p #{File.dirname(remote_path)}")
-            ssh.exec!("echo #{escaped_content} > #{remote_path}")
+            ssh.exec!("echo #{escaped} > #{remote_path}")
           end
 
           def build_database_url(filled_options, postgres_defaults)
