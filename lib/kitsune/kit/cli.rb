@@ -1,5 +1,5 @@
 require "thor"
-require "colorize"
+require_relative "ansi_color"
 require_relative "env_loader"
 require_relative "commands/init"
 require_relative "commands/switch_env"

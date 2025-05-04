@@ -40,7 +40,6 @@ Gem::Specification.new do |spec|
   spec.add_dependency "dotenv", "~> 3.0"
   spec.add_dependency "droplet_kit", "~> 3.17"
   spec.add_dependency "thor", "~> 1.3"
-  spec.add_dependency "colorize", "~> 1.0.4"
 
 
   spec.add_development_dependency "pry", "~> 0.14"

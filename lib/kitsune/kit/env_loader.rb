@@ -18,8 +18,8 @@ module Kitsune
 
         if found
           Dotenv.load(found)
-          puts "🧪 Loaded Kitsune environment from #{found.light_cyan}"
-          puts "=======================================================================\n".light_cyan
+          puts AnsiColor.colorize("🧪 Loaded Kitsune environment from #{found}", color: :light_cyan)
+          puts AnsiColor.colorize("=======================================================================\n", color: :light_cyan)
         else
           puts "⚠️  No Kitsune infra config found for environment '#{env}' (looked for infra.#{env}.env and infra.env)"
         end

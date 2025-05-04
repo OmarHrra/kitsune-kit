@@ -1,5 +1,3 @@
-require "colorize"
-
 require "spec_helper"
 require "kitsune/kit/env_loader"
 

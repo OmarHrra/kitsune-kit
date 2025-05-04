@@ -1,4 +1,3 @@
-# spec/kitsune/kit/cli_spec.rb
 require "spec_helper"
 require "kitsune/kit/cli"
 
