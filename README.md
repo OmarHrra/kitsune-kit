@@ -19,7 +19,8 @@
 - 💾 Configures swap space for better performance
 - 📊 Installs [DigitalOcean monitoring agent](https://docs.digitalocean.com/products/monitoring/how-to/install-agent/)
 - 🐳 Installs and configures Docker Engine and private networking
-- 🐘 Deploys PostgreSQL via Docker Compose with healthcheck and `.env`
+- 🐘 Deploys PostgreSQL via Docker Compose with healthcheck
+- 🗄️ Deploys Redis via Docker Compose with healthcheck
 - 🔄 All steps can be rolled back (`--rollback`)
 - ⚡ Fast, reproducible and without relying on YAML or complex external tools
 
