@@ -15,7 +15,7 @@ RSpec.describe Kitsune::Kit::Defaults do
     it "uses defaults if ENV is not set (except ssh_key_id)" do
       ENV["SSH_KEY_ID"] = "12345"
       result = described_class.infra
-      expect(result[:droplet_name]).to eq("app-prod")
+      expect(result[:droplet_name]).to eq("app-dev")
       expect(result[:ssh_key_id]).to eq("12345")
     end
 

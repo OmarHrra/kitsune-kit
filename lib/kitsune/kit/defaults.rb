@@ -2,11 +2,11 @@ module Kitsune
   module Kit
     module Defaults
       DROPLET = {
-        droplet_name: "app-prod",
+        droplet_name: "app-dev",
         region: "sfo3",
         size: "s-1vcpu-1gb",
         image: "ubuntu-22-04-x64",
-        tag: "rails-prod"
+        tag: "rails-dev"
       }.freeze
 
       SSH = {
@@ -15,7 +15,6 @@ module Kitsune
       }.freeze
 
       POSTGRES = {
-        db_prefix: "myapp_db",
         user: "postgres",
         password: "secret",
         port: "5432",
@@ -59,7 +58,7 @@ module Kitsune
         env = ENV.fetch('KIT_ENV', 'development')
 
         {
-          postgres_db: ENV.fetch('POSTGRES_DB') { "#{POSTGRES[:db_prefix]}_#{env}" },
+          postgres_db: ENV.fetch('POSTGRES_DB') { "myapp_db_#{env}" },
           postgres_user: ENV.fetch('POSTGRES_USER', POSTGRES[:user]),
           postgres_password: ENV.fetch('POSTGRES_PASSWORD', POSTGRES[:password]),
           postgres_port: ENV.fetch('POSTGRES_PORT', POSTGRES[:port]),
