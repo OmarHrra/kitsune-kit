@@ -9,9 +9,7 @@ module Kitsune
         @size         = opts[:size]
         @image        = opts[:image]
         @tag          = opts[:tag]
-        @ssh_key_id   = opts[:ssh_key_id] do
-          abort "❌ You must export SSH_KEY_ID or use --ssh_key_id"
-        end
+        @ssh_key_id   = opts[:ssh_key_id] { abort "❌ You must export SSH_KEY_ID or use --ssh_key_id" }
 
         @client       = DropletKit::Client.new(access_token: ENV.fetch("DO_API_TOKEN"))
       end

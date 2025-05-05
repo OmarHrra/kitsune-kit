@@ -18,6 +18,7 @@
 - ♻️ Enables automatic security updates (unattended-upgrades)
 - 💾 Configures swap space for better performance
 - 📊 Installs [DigitalOcean monitoring agent](https://docs.digitalocean.com/products/monitoring/how-to/install-agent/)
+- 🌐 **Automatically links** domains or subdomains (A records) to your server using DigitalOcean DNS
 - 🐳 Installs and configures Docker Engine and private networking
 - 🐘 Deploys PostgreSQL via Docker Compose with healthcheck
 - 🗄️ Deploys Redis via Docker Compose with healthcheck

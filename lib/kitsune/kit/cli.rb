@@ -4,6 +4,7 @@ require_relative "env_loader"
 require_relative "commands/init"
 require_relative "commands/switch_env"
 require_relative "commands/provision"
+require_relative "commands/dns"
 require_relative "commands/setup_user"
 require_relative "commands/setup_firewall"
 require_relative "commands/setup_unattended"
@@ -47,6 +48,9 @@ module Kitsune
 
       desc "provision SUBCOMMAND", "Provisioning tasks"
       subcommand "provision", Kitsune::Kit::Commands::Provision
+
+      desc "dns SUBCOMMAND", "Manage DNS"
+      subcommand "dns", Kitsune::Kit::Commands::Dns
 
       desc "setup_user SUBCOMMAND", "Create or rollback deploy user on remote server"
       subcommand "setup_user", Kitsune::Kit::Commands::SetupUser

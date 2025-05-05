@@ -44,6 +44,7 @@ module Kitsune
             run_cli("setup_unattended create", droplet_ip, filled_options)
             run_cli("setup_swap create", droplet_ip, filled_options)
             run_cli("setup_do_metrics create", droplet_ip, filled_options)
+            run_cli("dns link", droplet_ip, filled_options.merge(domains: ENV["DOMAIN_NAMES"]))
           end
 
           def rollback_sequence(filled_options)
@@ -75,10 +76,11 @@ module Kitsune
             run_cli("setup_user rollback", droplet_ip, filled_options)
 
             unless filled_options[:keep_server]
+              run_cli("dns rollback", droplet_ip, filled_options.merge(domains: ENV["DOMAIN_NAMES"]))
               say "▶️ Running: kitsune kit provision rollback", :blue
               Kitsune::Kit::CLI.start(%w[provision rollback])
             else
-              say "⏭️  Skipping droplet deletion (--keep-server enabled)", :yellow
+              say "⏭️  Skipping droplet deletion (--keep-server enabled), DNS rollback won't be executed", :yellow
             end
           end
 
@@ -99,12 +101,18 @@ module Kitsune
           def run_cli(command, droplet_ip, filled_options)
             say "\n▶️ Running: kitsune kit #{command} --server-ip #{droplet_ip}", :blue
             subcommand, action = command.split(" ", 2)
-            Kitsune::Kit::CLI.start([
-              subcommand, action,
-              "--server-ip", droplet_ip,
-              "--ssh-port", filled_options[:ssh_port],
-              "--ssh-key-path", filled_options[:ssh_key_path]
-            ])
+
+            args = [subcommand, action, "--server-ip", droplet_ip]
+
+            if subcommand != "dns"
+              args += ["--ssh-port", filled_options[:ssh_port], "--ssh-key-path", filled_options[:ssh_key_path]]
+            end
+
+            if subcommand == "dns" && ENV["DOMAIN_NAMES"]
+              args += ["--domains", ENV["DOMAIN_NAMES"]]
+            end
+
+            Kitsune::Kit::CLI.start(args)
           rescue SystemExit => e
             abort "❌ Command failed: #{command} (exit #{e.status})"
           end
