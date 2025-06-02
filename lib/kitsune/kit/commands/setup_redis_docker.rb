@@ -150,7 +150,7 @@ module Kitsune
 
             while attempt < max_attempts
               attempt += 1
-              healthcheck = ssh.exec!("docker exec $(docker ps -qf name=redis) redis-cli --no-auth-warning -a #{redis_defaults[:redis_password]} PING")
+              healthcheck = ssh.exec!("docker exec $(docker ps -qf name=redis) redis-cli --no-auth-warning -a \"#{redis_defaults[:redis_password]}\" PING")
 
               if healthcheck.strip == "PONG"
                 say "✅ Redis is up and responding to PING! (attempt #{attempt})", :green
