@@ -95,7 +95,7 @@ RSpec.describe Kitsune::Kit::Defaults do
       result = described_class.redis
 
       expect(result[:redis_port]).to eq("6379")
-      expect(result[:redis_password]).to eq("redis:7.2")
+      expect(result[:redis_password]).to eq("secret")
     end
 
     it "uses ENV values for redis config" do

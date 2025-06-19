@@ -4,7 +4,6 @@ require "fileutils"
 require "shellwords"
 require_relative "../defaults"
 require_relative "../options_builder"
-require "pry"
 module Kitsune
   module Kit
     module Commands
