@@ -33,7 +33,7 @@ module Kitsune
 
       REDIS = {
         port: "6379",
-        password: "redis:7.2"
+        password: "secret"
       }.freeze
 
       def self.infra
