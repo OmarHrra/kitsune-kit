@@ -40,7 +40,7 @@ jobs:
       KITSUNE_E2E_SSH_KEY_ID: ${{ secrets.KITSUNE_E2E_SSH_KEY_ID }}
       KITSUNE_E2E: "1"
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: ruby/setup-ruby@v1
         with:
           ruby-version: "3.4"
@@ -64,7 +64,7 @@ jobs:
     env:
       DO_API_TOKEN: ${{ secrets.DO_API_TOKEN }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: ruby/setup-ruby@v1
         with:
           ruby-version: "3.4"
