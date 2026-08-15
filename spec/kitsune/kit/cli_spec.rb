@@ -56,6 +56,47 @@ RSpec.describe "bin/kit CLI", type: :integration do
     end
   end
 
+  it "shows, validates, diffs and ejects Compose without a TUI" do
+    Dir.mktmpdir("kitsune-cli-compose") do |root|
+      Open3.capture3(bin_path, "init", "--root", root, "--no-log")
+      key = File.join(root, "test-key")
+      File.write(key, "fixture private key")
+      File.chmod(0o600, key)
+      config_path = File.join(root, ".kitsune/config.yml")
+      config = YAML.safe_load_file(config_path)
+      config["ssh"]["key_path"] = key
+      File.write(config_path, YAML.dump(config))
+
+      stdout, stderr, status = Open3.capture3(
+        bin_path, "service", "postgres", "compose", "show", "--root", root, "--no-log"
+      )
+      expect(status).to be_success
+      expect(stderr).to be_empty
+      expect(stdout).to include("compose.yml (generated)", "POSTGRES_PASSWORD")
+
+      stdout, stderr, status = Open3.capture3(
+        bin_path, "service", "postgres", "compose", "diff", "--root", root, "--format", "json", "--no-log"
+      )
+      expect(status).to be_success
+      expect(stderr).to be_empty
+      expect(JSON.parse(stdout).dig("result", "changed")).to be(true)
+
+      _stdout, stderr, status = Open3.capture3(
+        bin_path, "service", "postgres", "compose", "eject", "--root", root, "--no-log"
+      )
+      expect(status).to be_success
+      expect(stderr).to be_empty
+      expect(File).to exist(File.join(root, ".kitsune/compose/postgres.yml"))
+
+      stdout, stderr, status = Open3.capture3(
+        bin_path, "service", "postgres", "compose", "validate", "--root", root, "--no-log"
+      )
+      expect(status).to be_success
+      expect(stderr).to be_empty
+      expect(stdout).to include("valid (custom)")
+    end
+  end
+
   it "falls back to help without a TTY and refuses explicit TUI mode with a stable code" do
     stdout, stderr, status = Open3.capture3(bin_path)
     expect(status).to be_success

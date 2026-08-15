@@ -205,17 +205,24 @@ module Kitsune
         end
       end
 
-      desc "service TYPE ACTION", "Manage postgres or redis: status, install, backup, remove, destroy-data"
+      desc "service TYPE ACTION [SUBACTION]",
+           "Manage postgres or redis, including Compose show, validate, diff and eject"
       option :confirm_destroy, type: :string, desc: "Exact TYPE@ENV value required for data destruction"
       option :backup_before_destroy, type: :boolean, default: false,
                                      desc: "Create a restricted remote data backup before destroy-data"
-      def service(type, action)
+      option :force, type: :boolean, default: false, desc: "Replace an existing ejected Compose file and backup"
+      def service(type, action, subaction = nil)
         execute do
           app, reporter = build_application
-          operation = find_service_operation(app, type, action)
-          result = dispatch_service_action(app, operation, type, action)
+          result = if action == "compose"
+                     dispatch_service_compose(app, type, subaction)
+                   else
+                     operation = find_service_operation(app, type, action)
+                     dispatch_service_action(app, operation, type, action)
+                   end
           if json? && result.is_a?(Result)
-            flush_json(reporter, result, "service.#{type}.#{action}", app.config.environment)
+            command = ["service", type, action, subaction].compact.join(".")
+            flush_json(reporter, result, command, app.config.environment)
           end
           0
         end
@@ -473,6 +480,61 @@ module Kitsune
           when "destroy-data" then destroy_service_data(app, operation, type)
           else raise Errors::ConfigurationError, "unknown service action: #{action}"
           end
+        end
+
+        def dispatch_service_compose(app, type, action)
+          raise Errors::ConfigurationError, "unknown service type: #{type}" unless %w[postgres redis].include?(type)
+
+          service = app.config.services.public_send(type)
+          if service.mode == "external"
+            raise Errors::UnsafeOperationError, "Compose is not managed for an external #{type} service"
+          end
+
+          compose = ServiceCompose.new(config: app.config, type: type, service: service)
+          case action
+          when "show" then compose_show(compose)
+          when "validate" then compose_validate(type, compose)
+          when "diff" then compose_diff(app, type, compose)
+          when "eject" then compose_eject(app, type)
+          else
+            raise Errors::ConfigurationError,
+                  "unknown Compose action: #{action || '(missing)'}; expected show, validate, diff or eject"
+          end
+        end
+
+        def compose_show(compose)
+          puts compose.display unless json?
+          Result.success(compose.metadata.merge(content: compose.display, fingerprint: compose.fingerprint))
+        end
+
+        def compose_validate(type, compose)
+          puts "#{type} Compose customization is valid (#{compose.mode})." unless json?
+          Result.success(compose.metadata.merge(valid: true, fingerprint: compose.fingerprint))
+        end
+
+        def compose_eject(app, type)
+          value = Workflows::EjectCompose.new(
+            root: options[:root], config: app.config, type: type, config_path: options[:config]
+          ).call(force: options[:force])
+          puts "Created #{value[:compose_file]} and updated #{value[:config_file]}." unless json?
+          Result.success(value)
+        end
+
+        def compose_diff(app, type, compose)
+          state = app.state_store.read(app.config.environment).dig("resources", "service.#{type}")
+          installed = state&.fetch("compose_fingerprint", nil)
+          changed = installed != compose.fingerprint
+          value = { changed: changed, desired_fingerprint: compose.fingerprint,
+                    installed_fingerprint: installed, mode: compose.mode }
+          unless json?
+            label = if installed
+                      changed ? "changed" : "unchanged"
+                    else
+                      "not installed or from an older state"
+                    end
+            puts "#{type} Compose: #{label}"
+          end
+          Result.success(value)
         end
 
         def destroy_service_data(app, operation, type)

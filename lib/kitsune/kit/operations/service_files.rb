@@ -6,23 +6,25 @@ module Kitsune
   module Kit
     module Operations
       class ServiceFiles
-        def initialize(config:, type:, transport:, state_store:, resource:, fingerprint:)
+        def initialize(config:, type:, transport:, state_store:, resource:, fingerprint:, compose_filenames:)
           @config = config
           @type = type
           @transport = transport
           @state_store = state_store
           @resource = resource
           @fingerprint = fingerprint
+          @compose_filenames = compose_filenames
         end
 
         def directory = "/home/#{config.ssh.user}/.local/share/kitsune/services/#{type}"
-        def compose_path = "#{directory}/compose.yml"
+        def compose_path(filename = "compose.yml") = "#{directory}/#{filename}"
+        def compose_paths = compose_filenames.call.map { |filename| compose_path(filename) }
         def env_path = "#{directory}/.env"
         def backup_directory = "/var/lib/kitsune/backups/service-#{type}-#{fingerprint.call[0, 12]}"
 
         def ensure_managed_or_absent!(actual_fingerprint)
           return if managed?
-          return if actual_fingerprint.empty? && !exists?(compose_path) && !exists?(env_path)
+          return if actual_fingerprint.empty? && known_paths.none? { |path| exists?(path) }
 
           raise Errors::UnsafeOperationError.new(
             "refusing to replace unmanaged #{type} service files",
@@ -39,17 +41,14 @@ module Kitsune
             timeout: 20
           )
           raise_remote!(result, "create service backup directory")
-          [compose_path, env_path].select { |path| exists?(path) }.tap do |paths|
+          known_paths.select { |path| exists?(path) }.tap do |paths|
             paths.each { |path| copy(path, backup_directory) }
           end
         end
 
         def restore_after_failure(backed_up_files)
-          if backed_up_files.empty?
-            transport.execute("rm", arguments: ["-f", compose_path, env_path], timeout: 20)
-          else
-            backed_up_files.each { |path| copy("#{backup_directory}/#{File.basename(path)}", File.dirname(path)) }
-          end
+          transport.execute("rm", arguments: ["-f", *known_paths], timeout: 20)
+          backed_up_files.each { |path| copy("#{backup_directory}/#{File.basename(path)}", File.dirname(path)) }
         end
 
         def restore_previous(previous, marker_path:)
@@ -75,7 +74,12 @@ module Kitsune
 
         private
 
-        attr_reader :config, :type, :transport, :state_store, :resource, :fingerprint
+        attr_reader :config, :type, :transport, :state_store, :resource, :fingerprint, :compose_filenames
+
+        def known_paths
+          previous = state_store.read(config.environment).dig("resources", resource, "compose_files") || []
+          (compose_paths + previous.map { |filename| compose_path(filename) } + [env_path]).uniq
+        end
 
         def managed? = !!state_store.read(config.environment).dig("resources", resource, "managed")
         def exists?(path) = transport.execute("test", arguments: ["-e", path], timeout: 10).success?

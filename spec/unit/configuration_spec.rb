@@ -78,6 +78,26 @@ RSpec.describe Kitsune::Kit::Configuration::Loader do
       .to raise_error(Kitsune::Kit::Errors::ConfigurationError, /allowed_cidrs/)
   end
 
+  it "loads project-local Compose modes and rejects paths outside the project" do
+    compose = File.join(root, ".kitsune/postgres.override.yml")
+    FileUtils.mkdir_p(File.dirname(compose))
+    File.write(compose, "services:\n  postgres:\n    restart: always\n")
+    write_config(
+      "server" => valid_server,
+      "services" => { "postgres" => { "compose" => { "mode" => "overlay", "file" => compose } } }
+    )
+
+    service = described_class.new(root: root, env: env).load.services.postgres
+    expect(service.compose).to have_attributes(mode: "overlay", file: compose, allow_unsafe: false)
+
+    write_config(
+      "server" => valid_server,
+      "services" => { "postgres" => { "compose" => { "mode" => "custom", "file" => __FILE__ } } }
+    )
+    expect { described_class.new(root: root, env: env).load }
+      .to raise_error(Kitsune::Kit::Errors::ConfigurationError, /must stay inside the project root/)
+  end
+
   it "supports validated external services without planning local Docker resources" do
     write_config(
       "server" => valid_server,

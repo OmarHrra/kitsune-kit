@@ -31,13 +31,17 @@ module ConfigFactory
   end
 
   def build_service(type:, overrides: {})
+    overrides = overrides.dup
+    compose = overrides.delete(:compose)
+    compose = Kitsune::Kit::Configuration::Compose.new(**compose) if compose.is_a?(Hash)
     defaults = if type == :postgres
                  { image: "postgres:17", port: 5432, password_env: "POSTGRES_PASSWORD", mode: "managed", host: nil }
                else
                  { image: "redis:7.2", port: 6379, password_env: "REDIS_PASSWORD", mode: "managed", host: nil }
                end
     Kitsune::Kit::Configuration::Service.new(
-      **defaults, enabled: false, publish: false, bind: "127.0.0.1", allowed_cidrs: [], **overrides
+      **defaults, enabled: false, publish: false, bind: "127.0.0.1", allowed_cidrs: [],
+                  compose: compose || Kitsune::Kit::Configuration::Compose.new, **overrides
     )
   end
 end

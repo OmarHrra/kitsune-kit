@@ -44,8 +44,27 @@ module Kitsune
         end
       end
 
+      class Compose < Data.define(:mode, :file, :allow_unsafe)
+        MODES = %w[generated overlay custom].freeze
+
+        def initialize(mode: "generated", file: nil, allow_unsafe: false, root: Dir.pwd)
+          expanded_file = file.to_s.empty? ? nil : Pathname(file.to_s).expand_path(root).to_s
+          super(mode: mode.to_s, file: expanded_file, allow_unsafe: boolean(allow_unsafe))
+        end
+
+        private
+
+        def boolean(value)
+          return value if [true, false].include?(value)
+          return true if value.to_s.casecmp("true").zero?
+          return false if value.to_s.casecmp("false").zero?
+
+          raise Errors::ConfigurationError, "expected a boolean, got #{value.inspect}"
+        end
+      end
+
       class Service < Data.define(:enabled, :mode, :host, :image, :publish, :bind, :allowed_cidrs, :port,
-                                  :password_env)
+                                  :password_env, :compose)
         def initialize(**attributes)
           super(
             enabled: boolean(attributes.fetch(:enabled)),
@@ -56,7 +75,8 @@ module Kitsune
             bind: attributes.fetch(:bind).to_s,
             allowed_cidrs: Array(attributes.fetch(:allowed_cidrs)).map(&:to_s).freeze,
             port: Integer(attributes.fetch(:port)),
-            password_env: attributes.fetch(:password_env).to_s
+            password_env: attributes.fetch(:password_env).to_s,
+            compose: attributes.fetch(:compose, Compose.new)
           )
         rescue ArgumentError, TypeError
           raise Errors::ConfigurationError, "service port must be an integer"
@@ -142,7 +162,8 @@ module Kitsune
             "bind" => "127.0.0.1",
             "allowed_cidrs" => [],
             "port" => 5432,
-            "password_env" => "POSTGRES_PASSWORD"
+            "password_env" => "POSTGRES_PASSWORD",
+            "compose" => { "mode" => "generated", "file" => nil, "allow_unsafe" => false }
           },
           "redis" => {
             "enabled" => false,
@@ -153,7 +174,8 @@ module Kitsune
             "bind" => "127.0.0.1",
             "allowed_cidrs" => [],
             "port" => 6379,
-            "password_env" => "REDIS_PASSWORD"
+            "password_env" => "REDIS_PASSWORD",
+            "compose" => { "mode" => "generated", "file" => nil, "allow_unsafe" => false }
           }
         },
         "system" => {
@@ -185,8 +207,10 @@ module Kitsune
         %w[server] => %w[name region size image ssh_key_id tags],
         %w[ssh] => %w[user port key_path allowed_cidrs],
         %w[services] => %w[postgres redis],
-        %w[services postgres] => %w[enabled mode host image publish bind allowed_cidrs port password_env],
-        %w[services redis] => %w[enabled mode host image publish bind allowed_cidrs port password_env],
+        %w[services postgres] => %w[enabled mode host image publish bind allowed_cidrs port password_env compose],
+        %w[services redis] => %w[enabled mode host image publish bind allowed_cidrs port password_env compose],
+        %w[services postgres compose] => %w[mode file allow_unsafe],
+        %w[services redis compose] => %w[mode file allow_unsafe],
         %w[system] => %w[swap_size_gb swap_swappiness unattended_upgrades metrics metrics_installer_sha256],
         %w[dns] => %w[domains ttl]
       }.freeze
@@ -260,13 +284,13 @@ module Kitsune
             server: Server.new(**symbolize(data.fetch("server"))),
             ssh: Ssh.new(**symbolize(data.fetch("ssh"))),
             services: Services.new(
-              postgres: Service.new(**symbolize(data.dig("services", "postgres"))),
-              redis: Service.new(**symbolize(data.dig("services", "redis")))
+              postgres: build_service(data.dig("services", "postgres")),
+              redis: build_service(data.dig("services", "redis"))
             ),
             system: System.new(**symbolize(data.fetch("system"))),
             dns: Dns.new(**symbolize(data.fetch("dns")))
           )
-          Validator.new(config, env: @env).validate!
+          Validator.new(config, env: @env, root: @root).validate!
           config
         rescue KeyError => e
           raise Errors::ConfigurationError.new("missing configuration value: #{e.key}",
@@ -291,6 +315,12 @@ module Kitsune
             "invalid configuration structure:\n- #{errors.join("\n- ")}",
             hint: "Remove unknown keys and restore every documented YAML mapping."
           )
+        end
+
+        def build_service(data)
+          attributes = symbolize(data)
+          compose = Compose.new(**symbolize(data.fetch("compose")), root: @root)
+          Service.new(**attributes, compose: compose)
         end
 
         def validate_schema_version!(version)
@@ -335,9 +365,10 @@ module Kitsune
         IMAGE = %r{\A[a-z0-9]+(?:[._/-][a-z0-9]+)*(?::[a-zA-Z0-9][a-zA-Z0-9._-]*)?(?:@sha256:[a-f0-9]{64})?\z}
         INSECURE_SECRETS = %w[password postgres redis changeme change-me secret admin].freeze
 
-        def initialize(config, env: ENV)
+        def initialize(config, env: ENV, root: Dir.pwd)
           @config = config
           @env = env
+          @root = Pathname(root).expand_path
           @errors = []
         end
 
@@ -410,7 +441,58 @@ module Kitsune
           else
             validate_managed_service(name, service)
           end
+          validate_compose(name, service)
           validate_service_secret(name, service) if service.enabled
+        end
+
+        def validate_compose(name, service)
+          compose = service.compose
+          return invalid_compose_mode(name) unless Compose::MODES.include?(compose.mode)
+
+          validate_compose_ownership(name, service)
+          return validate_generated_compose(name, compose) if compose.mode == "generated"
+          return missing_compose_file(name, compose) unless compose.file
+
+          validate_compose_file(name, Pathname(compose.file))
+        rescue SystemCallError => e
+          @errors << "services.#{name}.compose.file cannot be inspected: #{e.class}"
+        end
+
+        def invalid_compose_mode(name)
+          @errors << "services.#{name}.compose.mode must be generated, overlay or custom"
+        end
+
+        def validate_compose_ownership(name, service)
+          return unless service.mode == "external" && service.compose.mode != "generated"
+
+          @errors << "services.#{name}.compose is only available in managed mode"
+        end
+
+        def validate_generated_compose(name, compose)
+          @errors << "services.#{name}.compose.file must be empty in generated mode" if compose.file
+          return unless compose.allow_unsafe
+
+          @errors << "services.#{name}.compose.allow_unsafe must be false in generated mode"
+        end
+
+        def missing_compose_file(name, compose)
+          @errors << "services.#{name}.compose.file is required in #{compose.mode} mode"
+        end
+
+        def validate_compose_file(name, path)
+          root_prefix = "#{@root}#{File::SEPARATOR}"
+          return @errors << "services.#{name}.compose.file must stay inside the project root" unless
+            path.to_s.start_with?(root_prefix)
+
+          if path.symlink?
+            @errors << "services.#{name}.compose.file must not be a symbolic link"
+          elsif !path.file?
+            @errors << "services.#{name}.compose.file does not exist or is not a regular file: #{path}"
+          elsif !path.realpath.to_s.start_with?("#{@root.realpath}#{File::SEPARATOR}")
+            @errors << "services.#{name}.compose.file must not resolve outside the project root"
+          elsif path.size > 262_144
+            @errors << "services.#{name}.compose.file must not exceed 256 KiB"
+          end
         end
 
         def validate_managed_service(name, service)

@@ -40,6 +40,10 @@ module Kitsune
               allowed_cidrs: []
               port: 5432
               password_env: POSTGRES_PASSWORD
+              compose:
+                mode: generated
+                file:
+                allow_unsafe: false
             redis:
               enabled: false
               mode: managed
@@ -50,6 +54,10 @@ module Kitsune
               allowed_cidrs: []
               port: 6379
               password_env: REDIS_PASSWORD
+              compose:
+                mode: generated
+                file:
+                allow_unsafe: false
 
           system:
             swap_size_gb: 2

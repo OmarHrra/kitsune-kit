@@ -12,7 +12,8 @@ require_relative "service_state"
 module Kitsune
   module Kit
     module Operations
-      class EnsureService
+      # Service lifecycle coordination intentionally lives together so apply and rollback share one transaction model.
+      class EnsureService # rubocop:disable Metrics/ClassLength
         TYPES = %w[postgres redis].freeze
         MARKER_DIRECTORY = "/var/lib/kitsune/state"
 
@@ -62,7 +63,11 @@ module Kitsune
           transport.execute("mkdir", arguments: ["-p", service_directory], timeout: 10).then do |result|
             raise_remote!(result, "create service directory")
           end
-          transport.upload(content: compose_content, remote_path: compose_path, mode: "0600")
+          @compose.documents.each do |document|
+            transport.upload(
+              content: document.content, remote_path: files.compose_path(document.filename), mode: "0600"
+            )
+          end
           transport.upload(content: env_content(password), remote_path: env_path, mode: "0600")
           validate_compose
           start_service
@@ -79,7 +84,7 @@ module Kitsune
         def remove
           return false unless managed?
 
-          compose("down", "--remove-orphans")
+          compose("down", "--remove-orphans", filenames: installed_compose_files)
           firewall.remove
           remove_marker
           @managed_state.record_remove
@@ -97,7 +102,8 @@ module Kitsune
           remove
           if files.restore_previous(previous, marker_path: marker_path)
             firewall.restore(previous["previous_state"] || {})
-            start_service if previous.dig("previous_state", "installed") != false
+            start_service(filenames: previous.dig("previous_state", "compose_files")) if
+              previous.dig("previous_state", "installed") != false
           end
           @managed_state.record_rollback(previous)
           true
@@ -107,7 +113,7 @@ module Kitsune
           previous = managed_state
           return false unless previous
 
-          compose("down", "--volumes", "--remove-orphans")
+          compose("down", "--volumes", "--remove-orphans", filenames: installed_compose_files)
           files.destroy(previous, marker_path: marker_path)
           @managed_state.delete("destroy_data")
           true
@@ -120,13 +126,12 @@ module Kitsune
         def transport = @transport ||= transport_factory.deploy
         def project_name = "kitsune-#{config.environment}-#{@type}"
         def service_directory = files.directory
-        def compose_path = files.compose_path
         def env_path = files.env_path
         def marker_path = "#{MARKER_DIRECTORY}/service-#{@type}.sha256"
 
         def fingerprint
           @fingerprint ||= Digest::SHA256.hexdigest(
-            [compose_content, service.password_env, secret_digest, service.publish, service.bind,
+            [@compose.fingerprint, service.password_env, secret_digest, service.publish, service.bind,
              *service.allowed_cidrs].join("\0")
           )
         end
@@ -147,21 +152,24 @@ module Kitsune
           value
         end
 
-        def compose_content = @compose.content
         def env_content(password) = @compose.env_content(password)
 
         def validate_compose = compose("config", "--quiet")
-        def start_service = compose("up", "--detach", "--wait", "--wait-timeout", "120")
+
+        def start_service(filenames: nil)
+          compose("up", "--detach", "--wait", "--wait-timeout", "120", filenames: filenames)
+        end
 
         def verify_service
           result = compose("ps", "--status", "running", "--quiet")
           raise Errors::VerificationError, "#{@type} did not reach running state" if result.stdout.strip.empty?
         end
 
-        def compose(*arguments)
+        def compose(*arguments, filenames: nil)
           result = transport.execute(
             "docker",
-            arguments: ["compose", "--project-directory", service_directory, "--file", compose_path, *arguments],
+            arguments: ["compose", "--project-directory", service_directory,
+                        *compose_file_arguments(filenames), *arguments],
             timeout: 180
           )
           raise_remote!(result, "docker compose #{arguments.first}")
@@ -176,7 +184,7 @@ module Kitsune
           firewall.restore_after_failure(previous_state) if @firewall_changed
           safe_compose_down
           files.restore_after_failure(@backed_up_files)
-          start_service unless @backed_up_files.empty?
+          start_service(filenames: previous_state&.fetch("compose_files", nil)) unless @backed_up_files.empty?
         end
 
         def recover_failed_apply(previous_state, original_error)
@@ -194,7 +202,7 @@ module Kitsune
         def safe_compose_down
           transport.execute(
             "docker",
-            arguments: ["compose", "--project-directory", service_directory, "--file", compose_path,
+            arguments: ["compose", "--project-directory", service_directory, *compose_file_arguments,
                         "down", "--remove-orphans"],
             timeout: 180
           )
@@ -219,6 +227,8 @@ module Kitsune
           {
             "managed" => true, "installed" => true, "fingerprint" => fingerprint, "project" => project_name,
             "directory" => service_directory, "published" => service.publish, "port" => service.port,
+            "compose_mode" => @compose.mode, "compose_files" => @compose.filenames,
+            "compose_fingerprint" => @compose.fingerprint,
             "firewall_rules_added" => firewall.owned_rules, "firewall_drop_added" => firewall.drop_owned,
             "volume" => "#{project_name}_data",
             "previous_fingerprint" => change.details[:actual_fingerprint] || change.details["actual_fingerprint"],
@@ -229,11 +239,12 @@ module Kitsune
 
         def managed? = @managed_state.managed?
         def managed_state = @managed_state.current
+        def installed_compose_files = managed_state&.fetch("compose_files", nil)
 
         def files
           @files ||= ServiceFiles.new(
             config: config, type: @type, transport: transport, state_store: state_store,
-            resource: resource, fingerprint: -> { fingerprint }
+            resource: resource, fingerprint: -> { fingerprint }, compose_filenames: -> { @compose.filenames }
           )
         end
 
@@ -246,7 +257,8 @@ module Kitsune
 
         def backup_operation
           @backup_operation ||= ServiceBackup.new(
-            config: config, type: @type, transport: transport, compose: method(:compose), clock: @clock
+            config: config, type: @type, transport: transport,
+            compose: ->(*arguments) { compose(*arguments, filenames: installed_compose_files) }, clock: @clock
           )
         end
 
@@ -274,8 +286,13 @@ module Kitsune
             image: service.image, published: service.publish,
             bind: service.publish ? service.bind : nil, port: service.publish ? service.port : nil,
             fingerprint: fingerprint,
-            actual_fingerprint: actual.empty? ? nil : actual
+            actual_fingerprint: actual.empty? ? nil : actual,
+            compose: @compose.metadata
           }
+        end
+
+        def compose_file_arguments(filenames = nil)
+          Array(filenames || @compose.filenames).flat_map { |filename| ["--file", files.compose_path(filename)] }
         end
 
         def error_name(error) = error.respond_to?(:code) ? error.code : error.class.name

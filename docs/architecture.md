@@ -68,7 +68,10 @@ Safety-critical SSH/firewall operations execute inside one preserved authenticat
 
 ## Services
 
-`EnsureService` composes smaller collaborators for generated Compose YAML, file transaction/backups, firewall reconciliation, data backup and state transitions. Data lifecycle is deliberately separate from container/config lifecycle.
+`EnsureService` composes smaller collaborators for generated, overlay or custom Compose YAML, file
+transactions/backups, firewall reconciliation, data backup and state transitions. The ordered Compose file set is
+fingerprinted and persisted so recovery can restart the prior definition. Data lifecycle is deliberately separate
+from container/config lifecycle.
 
 An enabled service in `external` mode is configuration metadata, not an operation. It is visible through the
 CLI but excluded from VPS plans, Docker, firewall, doctor port checks and destructive lifecycle methods.
@@ -87,3 +90,4 @@ Detailed accepted decisions are in [architecture/decisions](architecture/decisio
 - supported platforms;
 - operation semantics;
 - optional TUI backend.
+- managed Compose customization boundary.

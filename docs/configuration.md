@@ -66,6 +66,10 @@ services:
     allowed_cidrs: []
     port: 5432
     password_env: POSTGRES_PASSWORD
+    compose:
+      mode: generated
+      file:
+      allow_unsafe: false
   redis:
     enabled: false
     mode: managed
@@ -76,6 +80,10 @@ services:
     allowed_cidrs: []
     port: 6379
     password_env: REDIS_PASSWORD
+    compose:
+      mode: generated
+      file:
+      allow_unsafe: false
 
 system:
   swap_size_gb: 2
@@ -135,6 +143,9 @@ SSH policy is ordered to keep a verified path open: create/verify the deploy use
 | `allowed_cidrs` | Required and non-empty when `publish` is true. |
 | `port` | Host port, 1–65535. Container ports remain 5432/6379. |
 | `password_env` | Environment-variable name containing the required secret. |
+| `compose.mode` | `generated`, `overlay`, or `custom`; only valid for managed services. |
+| `compose.file` | Project-local YAML file required by `overlay` and `custom`; empty for `generated`. |
+| `compose.allow_unsafe` | Explicit opt-in for security-sensitive Compose options. Defaults to false. |
 
 Images, binds, ports and secret names reject newline/shell/YAML injection patterns before any SSH connection is opened.
 
@@ -154,6 +165,11 @@ External mode is metadata and a safety boundary, not a database-provisioning int
 status` reports the endpoint without its secret. Install, backup, remove and destroy-data refuse to act; manage
 availability, TLS, backups and destruction with the external provider. External services never add Docker,
 firewall or private-port checks to the VPS plan.
+
+Compose files must be regular, non-symlink files inside the project root and no larger than 256 KiB. `overlay`
+combines the generated base with the configured file; `custom` replaces the generated document and must define
+`services.postgres` or `services.redis` respectively. Inline secrets are rejected. See
+[Compose customization](services/compose.md) for examples, validation rules and commands.
 
 ### `system`
 

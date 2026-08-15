@@ -5,6 +5,27 @@ and [Semantic Versioning](https://semver.org/); minor releases may change public
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-08-14
+
+### Added
+
+- Generated, overlay and fully custom Docker Compose modes for managed PostgreSQL and Redis.
+- Local `compose show`, `validate`, `diff` and safe `eject` service commands.
+- Project-bound file validation, inline-secret detection and explicit review metadata for unsafe Compose options.
+- Multi-file upload, fingerprinting, state tracking, recovery and rollback for Compose customizations.
+- Unit coverage for each customization mode, security boundary, ejection and remote multi-file execution.
+
+### Changed
+
+- Initialized projects now declare the generated Compose mode explicitly.
+- Service state records the Compose mode, ordered file set and content fingerprint.
+- Kitsune Kit 0.6.0 replaces the fixed service blueprints directly; no legacy blueprint compatibility layer remains.
+
+### Security
+
+- Customizations reject host namespace/device access, elevated capabilities, unmanaged ports, bind mounts, remote
+  builds, unmanaged env files and inline secrets unless the documented explicit unsafe escape applies.
+
 ## [0.5.0] - 2026-08-14
 
 ### Added
@@ -111,7 +132,8 @@ and [Semantic Versioning](https://semver.org/); minor releases may change public
 - First public preview.
 - Bootstrap commands for DigitalOcean, Docker and PostgreSQL.
 
-[Unreleased]: https://github.com/omarhrra/kitsune-kit/compare/v0.5.0...HEAD
+[Unreleased]: https://github.com/omarhrra/kitsune-kit/compare/v0.6.0...HEAD
+[0.6.0]: https://github.com/omarhrra/kitsune-kit/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/omarhrra/kitsune-kit/compare/v0.4.1...v0.5.0
 [0.4.1]: https://github.com/omarhrra/kitsune-kit/compare/v0.4.0...v0.4.1
 [0.4.0]: https://github.com/omarhrra/kitsune-kit/compare/v0.3.0...v0.4.0

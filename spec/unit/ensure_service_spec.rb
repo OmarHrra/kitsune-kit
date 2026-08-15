@@ -51,6 +51,32 @@ RSpec.describe Kitsune::Kit::Operations::EnsureService do
     expect(parsed.dig("networks", "private")).to include("external" => true, "name" => "kitsune-private")
   end
 
+  it "uploads overlays and passes every Compose file to Docker in order" do
+    overlay = File.join(root, "postgres.override.yml")
+    File.write(overlay, "services:\n  postgres:\n    environment:\n      LOG_STATEMENTS: all\n")
+    overlay_config = build_config(
+      postgres: { enabled: true, compose: { mode: "overlay", file: overlay, allow_unsafe: false } }
+    )
+    layered = described_class.new(
+      config: overlay_config, type: :postgres, transport_factory: factory, state_store: store, secret_store: secrets
+    )
+
+    layered.apply(layered.plan)
+
+    expect(transport.uploads).to include(
+      "/home/deploy/.local/share/kitsune/services/postgres/compose.yml",
+      "/home/deploy/.local/share/kitsune/services/postgres/compose.override.yml"
+    )
+    config_call = transport.calls.find do |name, arguments|
+      name == :execute && arguments[:command] == "docker" && arguments[:arguments].include?("config")
+    end
+    expect(config_call.last.fetch(:arguments)).to include(
+      "--file", "/home/deploy/.local/share/kitsune/services/postgres/compose.yml",
+      "--file", "/home/deploy/.local/share/kitsune/services/postgres/compose.override.yml"
+    )
+    expect(store.read("test").dig("resources", "service.postgres", "compose_mode")).to eq("overlay")
+  end
+
   it "keeps the Redis password out of the resolved container command and process arguments" do
     redis_config = build_config(redis: { enabled: true })
     compose = Kitsune::Kit::ServiceCompose.new(

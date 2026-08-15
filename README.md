@@ -2,14 +2,14 @@
 
 Kitsune Kit prepares Ubuntu servers for Docker and Kamal deployments through a predictable, inspectable CLI.
 
-> Status: `0.5.0` (pre-1.0). DigitalOcean and Ubuntu 22.04/24.04 LTS are supported. The command, configuration and state schemas may still change before 1.0.
+> Status: `0.6.0` (pre-1.0). DigitalOcean and Ubuntu 22.04/24.04 LTS are supported. The command, configuration and state schemas may still change before 1.0.
 
 ## What it does
 
 - Provisions an explicitly tagged DigitalOcean Droplet.
 - Configures a deploy user, verified SSH policy, UFW, swap and unattended security updates.
 - Installs Docker Engine and Docker Compose from Docker's official Ubuntu repository.
-- Optionally installs private PostgreSQL/Redis services or represents provider-managed external endpoints.
+- Optionally installs private PostgreSQL/Redis services, with generated, overlay or fully custom Docker Compose.
 - Creates exact DNS records without adopting unrelated resources.
 - Shows a plan before changing infrastructure and records managed state for resume and rollback.
 - Offers both a conventional CLI and an optional full-screen TUI over the same workflows.
@@ -32,7 +32,7 @@ gem install kitsune-kit
 Or add it to a project:
 
 ```ruby
-gem "kitsune-kit", "~> 0.5.0"
+gem "kitsune-kit", "~> 0.6.0"
 ```
 
 ## Safe quick start
@@ -72,6 +72,7 @@ See [Getting started](docs/getting-started.md) for the complete first-run proced
 | `kit rollback` | Restore managed configuration; preserve server and service data | Yes |
 | `kit server ACTION` | Show, create, configure, connect to or destroy the server | Depends |
 | `kit service TYPE ACTION` | Manage PostgreSQL or Redis | Depends |
+| `kit service TYPE compose ACTION` | Show, validate, diff or eject Compose | Local |
 | `kit dns ACTION` | List, plan, apply or remove configured records | Depends |
 | `kit docker ACTION` | Inspect, install or uninstall Docker | Depends |
 | `kit env ACTION [NAME]` | List, read or select environments | Local |
@@ -118,6 +119,9 @@ kit service postgres install
 
 See [PostgreSQL](docs/services/postgres.md) and [Redis](docs/services/redis.md).
 
+Compose remains generated and secure by default. Use an overlay for ordinary Docker options or eject a complete,
+editable file when the generated model is no longer sufficient. See [Compose customization](docs/services/compose.md).
+
 ## CLI and optional TUI
 
 Kitsune Kit is fully usable without the TUI. Every infrastructure action available in the full-screen interface invokes the same domain workflow and has a conventional command equivalent. Scripts and CI should use subcommands, `--no-input`, and optionally `--format json`.
@@ -151,6 +155,7 @@ Docker-backed integration tests and credential-gated DigitalOcean E2E tests are 
 - [Getting started](docs/getting-started.md)
 - [Configuration](docs/configuration.md)
 - [Command reference](docs/commands.md)
+- [Compose customization](docs/services/compose.md)
 - [Security](docs/security.md)
 - [Manual security audit](docs/security-audit.md)
 - [Troubleshooting](docs/troubleshooting.md)

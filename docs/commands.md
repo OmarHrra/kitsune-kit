@@ -101,6 +101,10 @@ kit service postgres install
 kit service postgres backup
 kit service postgres remove --yes
 kit service postgres destroy-data --backup-before-destroy --confirm-destroy postgres@ENV
+kit service postgres compose show
+kit service postgres compose validate
+kit service postgres compose diff
+kit service postgres compose eject
 ```
 
 Replace `postgres` with `redis` for Redis.
@@ -112,10 +116,20 @@ Replace `postgres` with `redis` for Redis.
   configuration backups/files and state. In an interactive terminal it offers the backup and requires typing
   `TYPE@ENV`; automation can request it with `--backup-before-destroy` and must supply `--confirm-destroy`.
   The data archive is retained outside the service directory, but must be copied to independent storage.
+- `compose show`: print the exact generated/custom documents that would be uploaded, without resolving secrets.
+- `compose validate`: parse the configured YAML and run Kitsune Kit's local structure and security checks.
+- `compose diff`: compare the desired Compose fingerprint with the last applied state. An older state without a
+  Compose fingerprint is reported as not installed/unknown rather than guessed.
+- `compose eject`: write `.kitsune/compose/TYPE.yml`, back up `config.yml` as `config.yml.backup`, and switch the
+  service to `custom`. It refuses existing targets unless `--force` is explicit.
 
 When an enabled service has `mode: external`, `status` returns only its configured host/port and
 `managed: false`. All local lifecycle actions fail safely; Kitsune Kit never treats an external provider's data as
 a VPS Docker volume.
+
+`install` and `apply` additionally run `docker compose config --quiet` on the server before starting containers.
+For overlay mode every `--file` is passed in deterministic base-then-overlay order. See
+[Compose customization](services/compose.md).
 
 ## DNS
 
