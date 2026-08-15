@@ -9,7 +9,7 @@ PATH
       ed25519 (~> 1.3)
       net-ssh (~> 7.2)
       ostruct (~> 0.6)
-      public_suffix (~> 6.0)
+      public_suffix (>= 6, < 8)
       thor (~> 1.3)
 
 GEM
@@ -67,7 +67,7 @@ GEM
       ast (~> 2.4.1)
       racc
     prism (1.9.0)
-    public_suffix (6.0.2)
+    public_suffix (7.0.5)
     racc (1.8.1)
     rainbow (3.1.1)
     rake (13.2.1)
