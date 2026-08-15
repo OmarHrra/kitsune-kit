@@ -8,45 +8,44 @@ Gem::Specification.new do |spec|
   spec.authors = ["Omar Herrera"]
   spec.email = ["contact@omarherrera.me"]
 
-  spec.summary = "Provision and setup DigitalOcean VPSs with Docker and PostgreSQL, ideal for Kamal deployments."
-  spec.description = "Kitsune Kit is a CLI toolkit that automates the provisioning, configuration, and Docker setup of remote servers, especially tailored for Ruby developers using Kamal. Includes rollback features and multi-environment support."
+  spec.summary = "Plan, provision, and configure secure Ubuntu servers for Docker and Kamal."
+  spec.description = "Kitsune Kit is an inspectable infrastructure CLI for provisioning DigitalOcean servers, " \
+                     "configuring Ubuntu and Docker, and managing private application services."
   spec.homepage = "https://github.com/omarhrra/kitsune-kit"
   spec.license = "MIT"
-  spec.required_ruby_version = ">= 3.0.0"
+  spec.required_ruby_version = ">= 3.2.0"
 
   spec.metadata["allowed_push_host"] = "https://rubygems.org"
 
   spec.metadata["homepage_uri"] = spec.homepage
   spec.metadata["source_code_uri"] = spec.homepage
   spec.metadata["changelog_uri"] = "#{spec.homepage}/blob/main/CHANGELOG.md"
+  spec.metadata["bug_tracker_uri"] = "#{spec.homepage}/issues"
+  spec.metadata["rubygems_mfa_required"] = "true"
 
-  # Specify which files should be added to the gem when it is released.
-  # The `git ls-files -z` loads the files in the RubyGem that have been added into git.
-  gemspec = File.basename(__FILE__)
-  spec.files = IO.popen(%w[git ls-files -z], chdir: __dir__, err: IO::NULL) do |ls|
-    ls.readlines("\x0", chomp: true).reject do |f|
-      (f == gemspec) ||
-        f.start_with?(*%w[bin/ test/ spec/ features/ .git appveyor Gemfile])
-    end
-  end
+  spec.files = Dir[
+    "CHANGELOG.md",
+    "CODE_OF_CONDUCT.md",
+    "CONTRIBUTING.md",
+    "LICENSE.txt",
+    "README.md",
+    "SECURITY.md",
+    "bin/kit",
+    "docs/**/*.md",
+    "lib/**/*",
+    "sig/**/*.rbs"
+  ]
   spec.bindir = "bin"
   spec.executables = ["kit"]
   spec.require_paths = ["lib"]
 
-  # Uncomment to register a new dependency of your gem
-  spec.add_dependency "net-ssh", "~> 7.2"
-  spec.add_dependency "ed25519", "~> 1.3"
+  spec.add_dependency "base64", "~> 0.3"
   spec.add_dependency "bcrypt_pbkdf", "~> 1.1"
-  spec.add_dependency "dotenv", "~> 3.0"
+  spec.add_dependency "bigdecimal", "~> 4.1"
   spec.add_dependency "droplet_kit", "~> 3.17"
+  spec.add_dependency "ed25519", "~> 1.3"
+  spec.add_dependency "net-ssh", "~> 7.2"
+  spec.add_dependency "ostruct", "~> 0.6"
+  spec.add_dependency "public_suffix", "~> 6.0"
   spec.add_dependency "thor", "~> 1.3"
-
-
-  spec.add_development_dependency "pry", "~> 0.14"
-  spec.add_development_dependency "pry-stack_explorer", "~> 0.6.0"
-  spec.add_development_dependency "rspec", "~> 3.12"
-  spec.add_development_dependency "aruba", "~> 2.2"
-
-  # For more information and examples about making a new gem, check out our
-  # guide at: https://bundler.io/guides/creating_gem.html
 end

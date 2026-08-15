@@ -1,198 +1,170 @@
-# Kitsune Kit 🦊
+# Kitsune Kit
 
-<p align="center">
-   <img src="kitsune-kit-logo.jpg" alt="Kitsune Logo" width="180"/>
-</p>
+Kitsune Kit prepares Ubuntu servers for Docker and Kamal deployments through a predictable, inspectable CLI.
 
-**Kitsune Kit** is a Ruby gem that automates the provisioning, configuration, and setup of remote Linux servers (VPS) to host applications deployed with [Kamal](https://github.com/basecamp/kamal) or Docker Compose. It is designed to work on DigitalOcean infrastructure (for now), featuring reversible commands and a clear workflow.
+> Status: `0.5.0` (pre-1.0). DigitalOcean and Ubuntu 22.04/24.04 LTS are supported. The command, configuration and state schemas may still change before 1.0.
 
-> 🛠️ *Ideal for Ruby developers who want to launch production without relying on other services.*
+## What it does
 
----
+- Provisions an explicitly tagged DigitalOcean Droplet.
+- Configures a deploy user, verified SSH policy, UFW, swap and unattended security updates.
+- Installs Docker Engine and Docker Compose from Docker's official Ubuntu repository.
+- Optionally installs private PostgreSQL/Redis services or represents provider-managed external endpoints.
+- Creates exact DNS records without adopting unrelated resources.
+- Shows a plan before changing infrastructure and records managed state for resume and rollback.
+- Offers both a conventional CLI and an optional full-screen TUI over the same workflows.
 
-## 🔍 Main Features
+Kitsune Kit is not a general-purpose configuration manager and does not manage arbitrary existing servers. It only removes resources recorded in its local state.
 
-- 🧪 **Automatically provisions** a Droplet on DigitalOcean
-- 👤 Configures a secure, passwordless `deploy` user
-- 🔐 Applies firewall rules (UFW) for SSH, HTTP, HTTPS
-- ♻️ Enables automatic security updates (unattended-upgrades)
-- 💾 Configures swap space for better performance
-- 📊 Installs [DigitalOcean monitoring agent](https://docs.digitalocean.com/products/monitoring/how-to/install-agent/)
-- 🌐 **Automatically links** domains or subdomains (A records) to your server using DigitalOcean DNS
-- 🐳 Installs and configures Docker Engine and private networking
-- 🐘 Deploys PostgreSQL via Docker Compose with healthcheck
-- 🗄️ Deploys Redis via Docker Compose with healthcheck
-- 🔄 All steps can be rolled back (`--rollback`)
-- ⚡ Fast, reproducible and without relying on YAML or complex external tools
+## Requirements
 
----
+- Ruby 3.2 or newer.
+- A DigitalOcean account, API token and uploaded SSH public key.
+- A local private SSH key with restricted permissions.
+- A project directory whose `.kitsune/` state can be backed up securely.
 
-## 📦 Installation
-
-Add this line to your `Gemfile`:
-
-```ruby
-gem "kitsune-kit"
-```
-
-Or install it manually:
+## Installation
 
 ```bash
 gem install kitsune-kit
 ```
 
----
+Or add it to a project:
 
-## ⚙️ Prerequisites
+```ruby
+gem "kitsune-kit", "~> 0.5.0"
+```
 
-1. Configure a DigitalOcean API token:
-    ```bash
-    export DO_API_TOKEN="your_token"
-    ```
-
-2. Have the SSH key ID uploaded to DigitalOcean:
-    ```bash
-    export SSH_KEY_ID="123456"
-    ```
-
-3. Have the private key installed on your local machine:
-    ```bash
-    export SSH_KEY_PATH="~/.ssh/id_rsa"
-    ```
-
----
-
-## 🚀 Getting Started
-
-Initialize the Kitsune project structure:
+## Safe quick start
 
 ```bash
 kit init
+
+# Edit .kitsune/config.yml first.
+export DO_API_TOKEN="..."
+
+kit doctor
+kit plan
+kit apply
 ```
 
-This will create the `.kitsune/` directory, multiple `.env` files, and the necessary Docker templates. Run it in your project's root directory.
+`kit apply` asks for confirmation. In automation, review the plan and use `kit apply --no-input --yes`. The first SSH connection also requires verifying the displayed host-key fingerprint; non-interactive runs must pass the exact value with `--trust-host-key`.
 
----
+The recommended workflow is always:
 
-## 🔧 Main Commands
+```text
+init -> edit configuration -> doctor -> plan -> apply -> doctor
+```
 
-### 🏗️ Server Provisioning
+See [Getting started](docs/getting-started.md) for the complete first-run procedure.
+
+## Commands
+
+| Command | Purpose | Changes resources |
+| --- | --- | --- |
+| `kit init` | Create project configuration | Local |
+| `kit doctor` | Check configuration, credentials, connectivity and drift | No |
+| `kit plan` | Show the desired changes | No |
+| `kit apply` | Apply the reviewed plan | Yes |
+| `kit resume [RUN_ID]` | Continue an incomplete run | Yes |
+| `kit status` | Show tracked state and the server | No |
+| `kit server import` | Recover a verified server ID after state loss | Exact name |
+| `kit rollback` | Restore managed configuration; preserve server and service data | Yes |
+| `kit server ACTION` | Show, create, configure, connect to or destroy the server | Depends |
+| `kit service TYPE ACTION` | Manage PostgreSQL or Redis | Depends |
+| `kit dns ACTION` | List, plan, apply or remove configured records | Depends |
+| `kit docker ACTION` | Inspect, install or uninstall Docker | Depends |
+| `kit env ACTION [NAME]` | List, read or select environments | Local |
+| `kit support bundle` | Create a local redacted diagnostic file | Local |
+| `kit ui` | Open the optional interactive terminal interface | Depends |
+
+Run `kit help` or `kit help COMMAND` for built-in help. The complete action and option reference is in [Commands](docs/commands.md).
+
+## Configuration and environments
+
+The base configuration is `.kitsune/config.yml`. Environment overlays live at `.kitsune/environments/NAME.yml`. Selection precedence is:
+
+1. `--env NAME`
+2. `KITSUNE_ENV`
+3. `.kitsune/environment`
+4. `development`
+
+Within a selected environment, value precedence is defaults, base file, environment overlay, supported environment-variable overrides, then explicit internal API overrides. Tokens and service passwords are read from environment variables and are never stored in configuration or state.
+
+See [Configuration](docs/configuration.md).
+
+## Security model
+
+- PostgreSQL and Redis have no published host port by default.
+- Publishing a data port requires explicit allowed CIDRs; Kitsune Kit also manages matching `DOCKER-USER` firewall rules.
+- SSH host keys use trust-on-explicit-confirmation and are subsequently checked strictly.
+- Shell arguments are validated and passed separately; uploaded scripts and configuration use restricted modes.
+- State writes are locked and atomic, with a recoverable backup.
+- Logs and support bundles are redacted and never uploaded automatically.
+- Destructive commands require exact or explicit confirmation.
+
+Read [Security](docs/security.md) before managing production infrastructure.
+
+## PostgreSQL and Redis
+
+Services are optional and disabled initially. Enable a service in configuration and export its configured secret:
 
 ```bash
-kit bootstrap execute
+export POSTGRES_PASSWORD="$(ruby -rsecurerandom -e 'print SecureRandom.base64(36)')"
+kit service postgres install
 ```
 
-This creates a Droplet and executes:
+`remove` stops/removes containers but preserves the Docker volume. `destroy-data` permanently removes it and requires `--confirm-destroy TYPE@ENV`. Create a backup first.
 
-1. `setup_user create`
-2. `setup_firewall create`
-3. `setup_unattended create`
-4. `setup_swap`
-5. `setup_do_metrics`
+See [PostgreSQL](docs/services/postgres.md) and [Redis](docs/services/redis.md).
 
-### 🐳 Full Docker Installation
+## CLI and optional TUI
+
+Kitsune Kit is fully usable without the TUI. Every infrastructure action available in the full-screen interface invokes the same domain workflow and has a conventional command equivalent. Scripts and CI should use subcommands, `--no-input`, and optionally `--format json`.
+
+With no arguments, `kit` opens the TUI only when both standard input and output are terminals; otherwise it prints help. Use `kit ui` to request it explicitly. See [TUI](docs/tui.md).
+
+## Automation and JSON
 
 ```bash
-kit bootstrap_docker execute --server-ip 123.123.123.123
+kit plan --format json --no-input --no-color
+kit apply --format json --no-input --yes
 ```
 
-This applies in order:
+JSON documents include `schema_version`, command/run metadata, status, result, warnings and domain events. Errors are emitted as a versioned JSON object on standard error and have documented exit codes. Do not parse human output.
 
-1. `setup_docker_prereqs create`
-2. `install_docker_engine create`
-3. `postinstall_docker create`
-
-### 🐘 Install PostgreSQL with Docker Compose
+## Development
 
 ```bash
-kit setup_postgres_docker create --server-ip 123.123.123.123
+bin/setup
+bundle exec rake test
+bundle exec rake lint
+bundle exec rake security
+bundle exec rake integration
+bundle exec rake ci
 ```
 
-It will provide you with a `DATABASE_URL` ready for Rails or any other app.
+Docker-backed integration tests and credential-gated DigitalOcean E2E tests are intentionally separate. See [Testing](docs/testing.md) and [Contributing](CONTRIBUTING.md).
 
----
+## Documentation
 
-## ♻️ Rollback for Each Step
+- [Getting started](docs/getting-started.md)
+- [Configuration](docs/configuration.md)
+- [Command reference](docs/commands.md)
+- [Security](docs/security.md)
+- [Manual security audit](docs/security-audit.md)
+- [Troubleshooting](docs/troubleshooting.md)
+- [Architecture](docs/architecture.md)
+- [Testing](docs/testing.md)
+- [Releasing](docs/releasing.md)
+- [Roadmap and extension decisions](docs/roadmap.md)
 
-Each command accepts the `--rollback` flag. For example:
+## Roadmap and stability
 
-```bash
-kit bootstrap execute --rollback --keep-server
-```
+The current focus is stabilizing the DigitalOcean lifecycle, schema migrations and real-infrastructure E2E coverage before 1.0. Additional providers and extension hooks will be considered only after those contracts are stable.
 
-This:
-- Reverts the server configuration (`unattended`, `firewall`, `user`)
-- Optionally **deletes the Droplet** (if you don't use `--keep-server`)
+Security reports follow [SECURITY.md](SECURITY.md). Changes are recorded in [CHANGELOG.md](CHANGELOG.md).
 
-The same applies to any other subcommand, such as:
+## License
 
-```bash
-kit bootstrap_docker execute --rollback --server-ip ...
-kit setup_postgres_docker rollback --server-ip ...
-```
-
----
-
-## 🌎 Support for Multiple Environments
-
-Use `switch_env` to change between environments:
-
-```bash
-kit switch_env to production
-```
-
-This updates `.kitsune/kit.env` and creates (if it doesn't exist) `.kitsune/infra.production.env`.
-
----
-
-## 🔗 Integration with Kamal
-
-Once the server is configured:
-
-1. Define your `kamal.yml` pointing to the created droplet
-2. Run `kamal setup` to initialize the deployment
-3. Use `kamal deploy` as usual
-
----
-
-## 💡 Tips
-
-- Use `kit init` in every new project.
-- Customize `.kitsune/docker/postgres.yml` if you need additional services.
-
----
-
-## 📘 Quick Example
-
-```bash
-# Initialize project structure
-kit init
-
-# Provision Droplet and configure everything
-kit bootstrap execute
-
-# Install Docker
-kit bootstrap_docker execute --server-ip 123.123.123.123
-
-# Set up the database
-kit setup_postgres_docker create --server-ip 123.123.123.123
-```
-
----
-
-## 🧪 In Development
-
-- [ ] Support for other providers (Hetzner)
-- [ ] Create databases on another server
-
----
-
-## 🔐 Security
-
-Never upload your `.env` files to public repositories. Kitsune does not encrypt them: it assumes you control your machine and your repo. Add `.kitsune/` to your project's `.gitignore`.
-
----
-
-## 📄 License
-
-MIT License © [Omar Herrera / OmarHrra]
+Kitsune Kit is available under the [MIT License](LICENSE.txt).

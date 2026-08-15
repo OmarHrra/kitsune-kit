@@ -1,0 +1,55 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+require "droplet_kit"
+require "time"
+
+class CleanupCiResources
+  def initialize(client:, now:, output: $stdout)
+    @client = client
+    @now = Integer(now)
+    @output = output
+  end
+
+  def call(execute: false)
+    expired = expired_droplets
+    if expired.empty?
+      output.puts "No expired Kitsune Kit CI droplets found."
+      return []
+    end
+
+    expired.each do |droplet|
+      if execute
+        client.droplets.delete(id: droplet.id)
+        output.puts "Deleted expired CI droplet #{droplet.id} (#{droplet.name})."
+      else
+        output.puts "Would delete expired CI droplet #{droplet.id} (#{droplet.name})."
+      end
+    end
+    output.puts "Dry run only; pass --execute to delete." unless execute
+    expired
+  end
+
+  private
+
+  attr_reader :client, :now, :output
+
+  def expired_droplets
+    client.droplets.all(tag_name: "kitsune-ci").select do |droplet|
+      expirations = Array(droplet.tags).filter_map { |tag| tag[/\Akitsune-expires-(\d+)\z/, 1] }.map(&:to_i)
+      expirations.any? { |expiry| expiry <= now }
+    end
+  end
+end
+
+if $PROGRAM_NAME == __FILE__
+  execute = ARGV.delete("--execute")
+  abort "Unknown arguments: #{ARGV.join(' ')}" unless ARGV.empty?
+
+  token = ENV.fetch("DO_API_TOKEN", "")
+  abort "DO_API_TOKEN is required" if token.empty?
+
+  now = Integer(ENV.fetch("KITSUNE_CLEANUP_NOW", Time.now.to_i.to_s))
+  client = DropletKit::Client.new(access_token: token)
+  CleanupCiResources.new(client: client, now: now).call(execute: execute)
+end

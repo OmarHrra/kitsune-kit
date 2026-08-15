@@ -1,0 +1,41 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    environment: release
+    permissions:
+      contents: write
+      id-token: write
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "3.4"
+          bundler: "4.0.18"
+          bundler-cache: true
+      - name: Require tag and gem versions to match
+        shell: bash
+        run: |
+          version="$(bundle exec ruby -Ilib -e 'require "kitsune/kit/version"; print Kitsune::Kit::VERSION')"
+          test "$GITHUB_REF_NAME" = "v$version"
+      - name: Install ShellCheck
+        run: sudo apt-get update && sudo apt-get install --yes shellcheck
+      - name: Run release gate
+        run: bundle exec rake ci
+      - name: Smoke-test the exact artifact
+        run: bundle exec rake artifact_smoke
+      - name: Publish through RubyGems trusted publishing
+        uses: rubygems/release-gem@v1
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" pkg/kitsune-kit-*.gem --verify-tag --generate-notes

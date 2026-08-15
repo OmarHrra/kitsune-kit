@@ -1,7 +1,21 @@
 # frozen_string_literal: true
-ENV["KIT_ENV"] = "test"
+
+require "simplecov"
+
+explicit_spec_files = ARGV.any? { |argument| argument.end_with?("_spec.rb") || argument.start_with?("spec/") }
+coverage_gate = ENV.fetch("KITSUNE_COVERAGE_GATE", explicit_spec_files ? "0" : "1") == "1"
+
+SimpleCov.start do
+  enable_coverage :branch
+  add_filter "/spec/"
+  minimum_coverage line: 80, branch: 50 if coverage_gate
+end
 
 require "kitsune/kit"
+require "kitsune/kit/adapters/fake_provider"
+require "kitsune/kit/adapters/fake_transport"
+
+Dir[File.expand_path("support/**/*.rb", __dir__)].each { |file| require file }
 
 RSpec.configure do |config|
   # Enable flags like --only-failures and --next-failure
@@ -19,15 +33,6 @@ RSpec.configure do |config|
     mocks.verify_partial_doubles = true
   end
 
-  config.before(:suite) do
-    $original_stdout = $stdout
-    $original_stderr = $stderr
-    $stdout = File.open(File::NULL, "w")
-    $stderr = File.open(File::NULL, "w")
-  end
-
-  config.after(:suite) do
-    $stdout = $original_stdout
-    $stderr = $original_stderr
-  end
+  config.order = :random
+  Kernel.srand config.seed
 end

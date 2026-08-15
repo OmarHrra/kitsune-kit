@@ -1,0 +1,29 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+require "json"
+
+threshold = Float(ENV.fetch("KITSUNE_CORE_BRANCH_COVERAGE", "85"))
+result_path = ENV.fetch("KITSUNE_COVERAGE_RESULT", File.expand_path("../coverage/.resultset.json", __dir__))
+abort "Coverage result not found: #{result_path}" unless File.file?(result_path)
+
+result_sets = JSON.parse(File.read(result_path))
+abort "Coverage result is empty: #{result_path}" if result_sets.empty?
+
+_command_name, latest_result = result_sets.max_by { |_name, value| Integer(value.fetch("timestamp", 0)) }
+result = latest_result.fetch("coverage")
+core_path = %r{/lib/kitsune/kit/(?!adapters/|tui/|reporters/|cli\.rb)}
+counts = result.filter_map do |path, coverage|
+  next unless path.match?(core_path)
+
+  coverage.fetch("branches", {}).values.flat_map { |value| value.is_a?(Hash) ? value.values : [value] }
+end.flatten
+abort "No core branch coverage was recorded" if counts.empty?
+
+covered = counts.count { |count| count.to_i.positive? }
+percentage = covered * 100.0 / counts.length
+puts format(
+  "Core branch coverage: %<percentage>.2f%% (%<covered>d/%<total>d), required: %<threshold>.2f%%",
+  percentage: percentage, covered: covered, total: counts.length, threshold: threshold
+)
+exit 1 if percentage < threshold

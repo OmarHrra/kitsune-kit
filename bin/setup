@@ -1,8 +1,37 @@
 #!/usr/bin/env bash
 set -euo pipefail
-IFS=$'\n\t'
-set -vx
 
+required_ruby="3.2.0"
+required_bundler="4.0.18"
+current_ruby="$(ruby -e 'print RUBY_VERSION')"
+
+if ! ruby -e "exit Gem::Version.new(RUBY_VERSION) >= Gem::Version.new('${required_ruby}')"; then
+  echo "Kitsune Kit requires Ruby ${required_ruby} or newer; found ${current_ruby}." >&2
+  exit 1
+fi
+
+echo "Using Ruby ${current_ruby}"
+if ! bundle --version | ruby -e "version = STDIN.read[/[0-9.]+/]; exit version && Gem::Version.new(version) >= Gem::Version.new('${required_bundler}')"; then
+  echo "Kitsune Kit development requires Bundler ${required_bundler} or newer." >&2
+  echo "Install it with: gem install bundler --version '${required_bundler}'" >&2
+  exit 1
+fi
+
+echo "Installing bundled gems..."
 bundle install
 
-# Do any other automated setup that you need to do here
+if ! command -v shellcheck >/dev/null 2>&1; then
+  echo "ShellCheck is required for remote-script validation. Install it, then rerun bin/setup." >&2
+  exit 1
+fi
+
+if ! command -v docker >/dev/null 2>&1; then
+  echo "Note: Docker is not installed; bundle exec rake integration will be unavailable." >&2
+elif ! docker info >/dev/null 2>&1; then
+  echo "Note: Docker is installed but its daemon is unavailable; integration tests will be skipped." >&2
+fi
+
+echo "Running the local verification suite..."
+bundle exec rake ci
+
+echo "Kitsune Kit is ready."

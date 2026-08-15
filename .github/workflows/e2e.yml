@@ -1,0 +1,74 @@
+name: Real infrastructure
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: kitsune-digitalocean-e2e
+  cancel-in-progress: false
+
+jobs:
+  credentials:
+    runs-on: ubuntu-latest
+    outputs:
+      available: ${{ steps.check.outputs.available }}
+    env:
+      DO_API_TOKEN: ${{ secrets.DO_API_TOKEN }}
+      KITSUNE_E2E_SSH_KEY_ID: ${{ secrets.KITSUNE_E2E_SSH_KEY_ID }}
+      KITSUNE_E2E_KEY: ${{ secrets.KITSUNE_E2E_KEY }}
+    steps:
+      - id: check
+        shell: bash
+        run: |
+          if [[ -n "$DO_API_TOKEN" && -n "$KITSUNE_E2E_SSH_KEY_ID" && -n "$KITSUNE_E2E_KEY" ]]; then
+            echo "available=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "available=false" >> "$GITHUB_OUTPUT"
+            echo "E2E secrets are not configured; skipping billable infrastructure."
+          fi
+
+  lifecycle:
+    needs: credentials
+    if: needs.credentials.outputs.available == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      DO_API_TOKEN: ${{ secrets.DO_API_TOKEN }}
+      KITSUNE_E2E_SSH_KEY_ID: ${{ secrets.KITSUNE_E2E_SSH_KEY_ID }}
+      KITSUNE_E2E: "1"
+    steps:
+      - uses: actions/checkout@v6
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "3.4"
+          bundler: "4.0.18"
+          bundler-cache: true
+      - name: Install the ephemeral SSH key
+        env:
+          KITSUNE_E2E_KEY: ${{ secrets.KITSUNE_E2E_KEY }}
+        run: |
+          install -d -m 0700 "$RUNNER_TEMP/kitsune-e2e"
+          printf '%s\n' "$KITSUNE_E2E_KEY" > "$RUNNER_TEMP/kitsune-e2e/id_ed25519"
+          chmod 0600 "$RUNNER_TEMP/kitsune-e2e/id_ed25519"
+          echo "KITSUNE_E2E_KEY_PATH=$RUNNER_TEMP/kitsune-e2e/id_ed25519" >> "$GITHUB_ENV"
+      - name: Run the real lifecycle
+        run: bundle exec rake e2e
+
+  cleanup:
+    needs: [credentials, lifecycle]
+    if: always() && needs.credentials.outputs.available == 'true'
+    runs-on: ubuntu-latest
+    env:
+      DO_API_TOKEN: ${{ secrets.DO_API_TOKEN }}
+    steps:
+      - uses: actions/checkout@v6
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "3.4"
+          bundler: "4.0.18"
+          bundler-cache: true
+      - name: Delete expired CI droplets only
+        run: bundle exec ruby script/cleanup-ci-resources --execute

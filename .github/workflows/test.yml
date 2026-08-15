@@ -1,19 +1,97 @@
-name: Test
+name: CI
 
 on:
   push:
     branches: ["main"]
   pull_request:
 
+permissions:
+  contents: read
+
 jobs:
-  test:
+  unit-tests:
+    name: Unit tests / Ruby ${{ matrix.ruby }}
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        ruby: ["3.2", "3.3", "3.4", "4.0"]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: ruby/setup-ruby@v1
         with:
-          ruby-version: '3.4'
-          bundler: '2.5.22'
+          ruby-version: ${{ matrix.ruby }}
+          bundler: "4.0.18"
           bundler-cache: true
-      - name: Run tests
-        run: bundle exec rake
+      - run: bundle exec rake test
+
+  cli-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "3.4"
+          bundler: "4.0.18"
+          bundler-cache: true
+      - run: KITSUNE_COVERAGE_GATE=0 bundle exec rspec spec/kitsune/kit/cli_spec.rb
+
+  adapter-contract-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "3.4"
+          bundler: "4.0.18"
+          bundler-cache: true
+      - run: KITSUNE_COVERAGE_GATE=0 bundle exec rspec spec/contracts spec/adapters
+
+  quality:
+    name: Lint and security
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "3.4"
+          bundler: "4.0.18"
+          bundler-cache: true
+      - name: Install ShellCheck
+        run: sudo apt-get update && sudo apt-get install --yes shellcheck
+      - run: bundle exec rake lint
+      - run: bundle exec rake security
+
+  gem-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "3.4"
+          bundler: "4.0.18"
+          bundler-cache: true
+      - name: Install with fresh dependencies and smoke-test the exact artifact
+        run: bundle exec rake artifact_smoke
+
+  integration:
+    name: Integration / Ubuntu ${{ matrix.ubuntu }}
+    runs-on: ubuntu-latest
+    needs: [unit-tests, quality]
+    strategy:
+      fail-fast: false
+      matrix:
+        ubuntu: ["22.04", "24.04"]
+    steps:
+      - uses: actions/checkout@v6
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "3.4"
+          bundler: "4.0.18"
+          bundler-cache: true
+      - name: Require a working Docker daemon
+        run: docker info
+      - name: Test SSH and script parsing on Ubuntu
+        env:
+          KITSUNE_TEST_UBUNTU: ${{ matrix.ubuntu }}
+        run: bundle exec rake integration

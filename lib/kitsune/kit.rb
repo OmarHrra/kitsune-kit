@@ -1,10 +1,49 @@
 # frozen_string_literal: true
 
 require_relative "kit/version"
+require_relative "kit/errors"
+require_relative "kit/events"
+require_relative "kit/result"
+require_relative "kit/plan"
+require_relative "kit/secret_filter"
+require_relative "kit/secret_store"
+require_relative "kit/clock"
+require_relative "kit/cancellation"
+require_relative "kit/run_logger"
+require_relative "kit/run_journal"
+require_relative "kit/service_compose"
+require_relative "kit/configuration"
+require_relative "kit/state_store"
+require_relative "kit/adapters/fake_state_store"
+require_relative "kit/adapters/fake_reporter"
+require_relative "kit/adapters/fake_secret_store"
+require_relative "kit/adapters/fake_clock"
+require_relative "kit/application"
+require_relative "kit/operations/ensure_dns_records"
+require_relative "kit/operations/remote_script"
+require_relative "kit/operations/ensure_service"
+require_relative "kit/reporters/human"
+require_relative "kit/reporters/json"
+require_relative "kit/workflows/build_plan"
+require_relative "kit/workflows/apply_plan"
+require_relative "kit/workflows/doctor"
+require_relative "kit/workflows/initialize_project"
+require_relative "kit/workflows/inspect_environment"
+require_relative "kit/workflows/rollback"
+require_relative "kit/workflows/destroy_server"
+require_relative "kit/workflows/import_server"
+require_relative "kit/workflows/environment_selection"
+require_relative "kit/workflows/support_bundle"
+require_relative "kit/tui/state"
+require_relative "kit/tui/store"
+require_relative "kit/tui/renderer"
+require_relative "kit/tui/terminal"
+require_relative "kit/tui/actions"
+require_relative "kit/tui/controller"
+require_relative "kit/tui/application"
 
 module Kitsune
   module Kit
-    class Error < StandardError; end
-    # Your code goes here...
+    Error = Errors::Error
   end
 end

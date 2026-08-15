@@ -1,0 +1,51 @@
+AllCops:
+  TargetRubyVersion: 3.2
+  NewCops: enable
+  SuggestExtensions: false
+  CacheRootDirectory: tmp/rubocop_cache
+  Exclude:
+    - "vendor/**/*"
+
+Style/StringLiterals:
+  EnforcedStyle: double_quotes
+
+Style/FetchEnvVar:
+  Enabled: false
+
+Metrics/ClassLength:
+  Max: 220
+  Exclude:
+    - "lib/kitsune/kit/cli.rb"
+
+Metrics/MethodLength:
+  Max: 30
+
+Layout/LineLength:
+  Max: 120
+
+Metrics/BlockLength:
+  Exclude:
+    - "spec/**/*"
+    - "*.gemspec"
+    - "lib/kitsune/kit/cli.rb"
+
+Metrics/AbcSize:
+  Max: 35
+
+Metrics/CyclomaticComplexity:
+  Max: 10
+
+Metrics/PerceivedComplexity:
+  Max: 10
+
+Metrics/ParameterLists:
+  Max: 8
+
+Naming/PredicateMethod:
+  Enabled: false
+
+Style/DataInheritance:
+  Enabled: false
+
+Style/Documentation:
+  Enabled: false

@@ -1,7 +1,10 @@
 #!/usr/bin/env ruby
-require "bundler/setup"
+
+# frozen_string_literal: true
+
 $LOAD_PATH.unshift File.expand_path("../lib", __dir__)
 require "kitsune/kit"
 require "kitsune/kit/cli"
 
+ARGV << ($stdin.tty? && $stdout.tty? ? "ui" : "help") if ARGV.empty?
 Kitsune::Kit::CLI.start(ARGV)

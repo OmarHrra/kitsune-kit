@@ -14,3 +14,9 @@
 .env
 .DS_Store
 *.gem
+
+/.kitsune/state/
+/.kitsune/logs/
+/.kitsune/support/
+/.kitsune/environment
+/.kitsune/known_hosts
