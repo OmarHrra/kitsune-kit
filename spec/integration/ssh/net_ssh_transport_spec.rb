@@ -2,7 +2,6 @@
 
 require "open3"
 require "securerandom"
-require "socket"
 require "spec_helper"
 
 RSpec.describe "Net::SSH transport against an ephemeral sshd", :integration do
@@ -34,14 +33,15 @@ RSpec.describe "Net::SSH transport against an ephemeral sshd", :integration do
     )
     published = command!("docker", "port", @container, "22/tcp")
     @port = Integer(published.split(":").last)
-    Timeout.timeout(20) do
-      loop do
-        TCPSocket.new("127.0.0.1", @port).close
-        break
-      rescue Errno::ECONNREFUSED
-        sleep 0.1
-      end
-    end
+    wait_for_authenticated_ssh!
+  end
+
+  after do |example|
+    next unless example.exception && @container && !@diagnostics_printed
+
+    stdout, stderr, = Open3.capture3("docker", "logs", @container)
+    warn "\nEphemeral sshd container logs:\n#{stdout}#{stderr}"
+    @diagnostics_printed = true
   end
 
   after(:all) do
@@ -55,6 +55,23 @@ RSpec.describe "Net::SSH transport against an ephemeral sshd", :integration do
       host: "127.0.0.1", user: "root", port: @port, key_path: key_path,
       verify_host_key: verifier, maximum_timeout: maximum_timeout
     )
+  end
+
+  def wait_for_authenticated_ssh!
+    deadline = Process.clock_gettime(Process::CLOCK_MONOTONIC) + 30
+    last_error = nil
+
+    loop do
+      return if transport(maximum_timeout: 2).execute("true", timeout: 2).success?
+    rescue Kitsune::Kit::Errors::ConnectionError => e
+      last_error = e
+      break if Process.clock_gettime(Process::CLOCK_MONOTONIC) >= deadline
+
+      sleep 0.2
+    end
+
+    stdout, stderr, = Open3.capture3("docker", "logs", @container)
+    raise "ephemeral sshd did not accept authenticated SSH: #{last_error&.message}\n#{stdout}#{stderr}"
   end
 
   it "authenticates, preserves output channels and quotes hostile arguments" do

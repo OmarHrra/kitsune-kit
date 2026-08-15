@@ -44,6 +44,7 @@ and [Semantic Versioning](https://semver.org/); minor releases may change public
 - Validate DigitalOcean account access before E2E provisioning and avoid false server drift warnings.
 - Use DropletKit's real `account.info` endpoint instead of a fake-only `account.get` method.
 - Correct TUI plan/doctor shortcut routing and prevent full-width terminal frames from scrolling during redraws.
+- Wait for authenticated SSH, rather than an open Docker proxy port, before running container integration cases.
 
 ### Removed
 
