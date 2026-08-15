@@ -9,6 +9,11 @@ repository="/etc/apt/sources.list.d/docker.sources"
 packages=(docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin)
 prerequisites=(ca-certificates curl)
 conflicting_packages=(docker.io docker-compose docker-compose-v2 podman-docker containerd runc)
+apt_options=(-o DPkg::Lock::Timeout=120 -o Acquire::Retries=3)
+
+apt_get() {
+  DEBIAN_FRONTEND=noninteractive apt-get "${apt_options[@]}" "$@"
+}
 
 refuse_conflicting_packages() {
   local installed=()
@@ -42,8 +47,8 @@ apply() {
   refuse_conflicting_packages
   install -d -m 0700 "${backup_dir}"
   snapshot
-  apt-get update
-  DEBIAN_FRONTEND=noninteractive apt-get install --yes "${prerequisites[@]}"
+  apt_get update
+  apt_get install --yes "${prerequisites[@]}"
   install -d -m 0755 /etc/apt/keyrings
   if [[ ! -f "${keyring}" ]]; then
     temporary_key="$(mktemp)"
@@ -76,8 +81,8 @@ EOF
     trap - EXIT
     touch "${backup_dir}/repository-created"
   fi
-  apt-get update
-  DEBIAN_FRONTEND=noninteractive apt-get install --yes "${packages[@]}"
+  apt_get update
+  apt_get install --yes "${packages[@]}"
   systemctl enable --now docker
   if ! id -nG "${user}" | tr ' ' '\n' | grep -Fxq docker; then
     usermod -aG docker "${user}"
@@ -106,12 +111,12 @@ rollback() {
   fi
   for package in "${packages[@]}"; do
     if ! grep -Fxq "${package}" "${backup_dir}/packages-before" 2>/dev/null; then
-      apt-get remove --yes "${package}" || true
+      apt_get remove --yes "${package}" || true
     fi
   done
   for package in "${prerequisites[@]}"; do
     if ! grep -Fxq "${package}" "${backup_dir}/packages-before" 2>/dev/null; then
-      apt-get remove --yes "${package}" || true
+      apt_get remove --yes "${package}" || true
     fi
   done
   if [[ -f "${backup_dir}/enabled-before" ]]; then

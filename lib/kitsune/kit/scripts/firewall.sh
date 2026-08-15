@@ -8,6 +8,11 @@ allowed_cidrs=("$@")
 backup_dir="/var/lib/kitsune/backups/firewall"
 added_file="${backup_dir}/rules-added"
 pending_file="${backup_dir}/rules-pending"
+apt_options=(-o DPkg::Lock::Timeout=120 -o Acquire::Retries=3)
+
+apt_get() {
+  DEBIAN_FRONTEND=noninteractive apt-get "${apt_options[@]}" "$@"
+}
 
 validate() {
   [[ "${ssh_port}" =~ ^[0-9]+$ ]] && (( ssh_port >= 1 && ssh_port <= 65535 ))
@@ -127,8 +132,8 @@ apply() {
     touch "${backup_dir}/snapshot-complete"
   fi
   if ! dpkg-query -W -f='${Status}' ufw 2>/dev/null | grep -q "ok installed"; then
-    apt-get update
-    DEBIAN_FRONTEND=noninteractive apt-get install --yes ufw
+    apt_get update
+    apt_get install --yes ufw
     touch "${backup_dir}/package-created"
   fi
 
@@ -190,7 +195,7 @@ rollback() {
     ufw --force disable || true
   fi
   if [[ -f "${backup_dir}/package-created" ]]; then
-    apt-get remove --yes ufw || true
+    apt_get remove --yes ufw || true
   fi
   rm -rf "${backup_dir}"
 }

@@ -4,6 +4,11 @@ set -Eeuo pipefail
 action="${1:?action is required}"
 expected_sha256="${2:?installer SHA-256 is required}"
 backup_dir="/var/lib/kitsune/backups/metrics"
+apt_options=(-o DPkg::Lock::Timeout=120 -o Acquire::Retries=3)
+
+apt_get() {
+  DEBIAN_FRONTEND=noninteractive apt-get "${apt_options[@]}" "$@"
+}
 
 validate() {
   [[ "${expected_sha256}" =~ ^[a-f0-9]{64}$ ]] || {
@@ -41,7 +46,7 @@ verify() {
 rollback() {
   if [[ -f "${backup_dir}/package-created" ]]; then
     systemctl disable --now do-agent || true
-    apt-get remove --purge --yes do-agent || true
+    apt_get remove --purge --yes do-agent || true
   fi
   rm -rf "${backup_dir}"
 }

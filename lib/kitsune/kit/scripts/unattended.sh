@@ -6,6 +6,11 @@ config_file="/etc/apt/apt.conf.d/20auto-upgrades"
 backup_dir="/var/lib/kitsune/backups/unattended"
 backup_file="${backup_dir}/20auto-upgrades.before"
 packages=(unattended-upgrades apt-listchanges)
+apt_options=(-o DPkg::Lock::Timeout=120 -o Acquire::Retries=3)
+
+apt_get() {
+  DEBIAN_FRONTEND=noninteractive apt-get "${apt_options[@]}" "$@"
+}
 
 snapshot() {
   [[ -f "${backup_dir}/snapshot-complete" ]] && return
@@ -28,8 +33,8 @@ snapshot() {
 apply() {
   install -d -m 0700 "${backup_dir}"
   snapshot
-  apt-get update
-  DEBIAN_FRONTEND=noninteractive apt-get install --yes "${packages[@]}"
+  apt_get update
+  apt_get install --yes "${packages[@]}"
   cat > "${config_file}" <<'EOF'
 APT::Periodic::Update-Package-Lists "1";
 APT::Periodic::Download-Upgradeable-Packages "1";
@@ -67,7 +72,7 @@ rollback() {
   restore_service_state
   for package in "${packages[@]}"; do
     if ! grep -Fxq "${package}" "${backup_dir}/packages-before" 2>/dev/null; then
-      apt-get remove --yes "${package}" || true
+      apt_get remove --yes "${package}" || true
     fi
   done
   rm -rf "${backup_dir}"
