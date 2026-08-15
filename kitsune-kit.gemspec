@@ -13,7 +13,7 @@ Gem::Specification.new do |spec|
                      "configuring Ubuntu and Docker, and managing private application services."
   spec.homepage = "https://github.com/omarhrra/kitsune-kit"
   spec.license = "MIT"
-  spec.required_ruby_version = ">= 3.2.0"
+  spec.required_ruby_version = Gem::Requirement.new(">= 3.2.0", "< 4.0")
 
   spec.metadata["allowed_push_host"] = "https://rubygems.org"
 

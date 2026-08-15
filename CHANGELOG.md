@@ -28,6 +28,7 @@ and [Semantic Versioning](https://semver.org/); minor releases may change public
 ### Changed
 
 - Version 0.5.0 directly replaces the earlier preview CLI; legacy compatibility is not a goal.
+- Declare Ruby 3.2–3.4 support explicitly; Ruby 4 remains blocked by the current DigitalOcean SDK dependency chain.
 - The command tree is now `init -> doctor -> plan -> apply`, with explicit resource subcommands.
 - PostgreSQL and Redis are private and disabled by default; data destruction is separate from service removal.
 - SSH, firewall, Docker and metrics setup use versioned verified scripts and captured rollback state.
@@ -36,7 +37,8 @@ and [Semantic Versioning](https://semver.org/); minor releases may change public
 
 ### Fixed
 
-- Declared `base64`, `bigdecimal` and transitive `ostruct` requirements explicitly for Ruby 3.3–4.0.
+- Declared `base64`, `bigdecimal` and transitive `ostruct` requirements explicitly for supported Ruby releases.
+- Made the ShellCheck availability probe portable across macOS and Ubuntu CI runners.
 - Prevented framework commands added by newer Thor releases from silently changing Kitsune Kit's public CLI.
 - Wait for SSH readiness after a new Droplet becomes active and reject mismatched E2E key pairs before billing.
 - Validate DigitalOcean account access before E2E provisioning and avoid false server drift warnings.

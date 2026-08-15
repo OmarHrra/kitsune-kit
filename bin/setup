@@ -2,11 +2,12 @@
 set -euo pipefail
 
 required_ruby="3.2.0"
+unsupported_ruby="4.0.0"
 required_bundler="4.0.18"
 current_ruby="$(ruby -e 'print RUBY_VERSION')"
 
-if ! ruby -e "exit Gem::Version.new(RUBY_VERSION) >= Gem::Version.new('${required_ruby}')"; then
-  echo "Kitsune Kit requires Ruby ${required_ruby} or newer; found ${current_ruby}." >&2
+if ! ruby -e "version = Gem::Version.new(RUBY_VERSION); exit version >= Gem::Version.new('${required_ruby}') && version < Gem::Version.new('${unsupported_ruby}')"; then
+  echo "Kitsune Kit requires Ruby >= ${required_ruby} and < ${unsupported_ruby}; found ${current_ruby}." >&2
   exit 1
 fi
 

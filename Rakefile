@@ -23,7 +23,8 @@ task lint: :rubocop do
             Dir["spec/fixtures/**/*.sh"]
   next if scripts.empty?
 
-  abort "shellcheck is required to lint remote scripts" unless system("command", "-v", "shellcheck", out: File::NULL)
+  shellcheck_available = system("shellcheck", "--version", out: File::NULL, err: File::NULL)
+  abort "shellcheck is required to lint remote scripts" unless shellcheck_available
 
   sh "shellcheck", *scripts
 end

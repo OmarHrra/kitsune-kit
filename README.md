@@ -18,7 +18,7 @@ Kitsune Kit is not a general-purpose configuration manager and does not manage a
 
 ## Requirements
 
-- Ruby 3.2 or newer.
+- Ruby 3.2, 3.3 or 3.4 (`>= 3.2`, `< 4.0`). Ruby 4 support is currently blocked by the DigitalOcean SDK dependency chain.
 - A DigitalOcean account, API token and uploaded SSH public key.
 - A local private SSH key with restricted permissions.
 - A project directory whose `.kitsune/` state can be backed up securely.

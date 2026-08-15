@@ -83,9 +83,9 @@ branch coverage. The Docker-backed SSH/Bash/TUI integration passed 8 examples on
 examples on Ubuntu 24.04. Pseudo-terminal cases verify restoration on normal exit and `SIGINT`. These local
 results are complemented by the real-provider evidence below.
 
-The 237-example baseline suite and core coverage gate passed under isolated Ruby 3.2.2, 3.3, 3.4 and 4.0
-runtimes. Six additional bounded SSH-bootstrap retry, server-state drift and real SDK-interface examples passed
-under the local Ruby 3.2.2 gate.
+The baseline suite and core coverage gate passed under the supported Ruby 3.2.2, 3.3 and 3.4 runtimes. Six
+additional bounded SSH-bootstrap retry, server-state drift and real SDK-interface examples passed under the
+local Ruby 3.2.2 gate.
 Standard-library extractions needed by Kitsune Kit and the current DigitalOcean SDK are explicit runtime dependencies,
 so warnings cannot corrupt structured output on newer Ruby releases.
 
@@ -110,6 +110,8 @@ so warnings cannot corrupt structured output on newer Ruby releases.
   Droplet was removed.
 - The same credentialed workflow has not yet been observed on a GitHub-hosted runner, so runner permissions,
   secret wiring and cleanup-job orchestration remain release gates.
+- Ruby 4 is outside the 0.5.0 support contract because the current DigitalOcean SDK constrains
+  `faraday-retry` to a release series that requires Ruby `< 4`; CI and gem metadata enforce this boundary.
 - User-selected PostgreSQL/Redis image tags are mutable unless pinned by digest. Production configurations
   should pin and deliberately update reviewed multi-platform digests.
 - Data archives are created on the same Droplet. They are not disaster recovery until copied to independent,
