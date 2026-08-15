@@ -65,31 +65,35 @@ RSpec.describe "bin/kit CLI", type: :integration do
       config_path = File.join(root, ".kitsune/config.yml")
       config = YAML.safe_load_file(config_path)
       config["ssh"]["key_path"] = key
+      config["services"]["postgres"]["enabled"] = true
       File.write(config_path, YAML.dump(config))
 
+      local_environment = { "DO_API_TOKEN" => nil, "POSTGRES_PASSWORD" => nil }
+
       stdout, stderr, status = Open3.capture3(
-        bin_path, "service", "postgres", "compose", "show", "--root", root, "--no-log"
+        local_environment, bin_path, "service", "postgres", "compose", "show", "--root", root, "--no-log"
       )
       expect(status).to be_success
       expect(stderr).to be_empty
       expect(stdout).to include("compose.yml (generated)", "POSTGRES_PASSWORD")
 
       stdout, stderr, status = Open3.capture3(
-        bin_path, "service", "postgres", "compose", "diff", "--root", root, "--format", "json", "--no-log"
+        local_environment, bin_path, "service", "postgres", "compose", "diff", "--root", root,
+        "--format", "json", "--no-log"
       )
       expect(status).to be_success
       expect(stderr).to be_empty
       expect(JSON.parse(stdout).dig("result", "changed")).to be(true)
 
       _stdout, stderr, status = Open3.capture3(
-        bin_path, "service", "postgres", "compose", "eject", "--root", root, "--no-log"
+        local_environment, bin_path, "service", "postgres", "compose", "eject", "--root", root, "--no-log"
       )
       expect(status).to be_success
       expect(stderr).to be_empty
       expect(File).to exist(File.join(root, ".kitsune/compose/postgres.yml"))
 
       stdout, stderr, status = Open3.capture3(
-        bin_path, "service", "postgres", "compose", "validate", "--root", root, "--no-log"
+        local_environment, bin_path, "service", "postgres", "compose", "validate", "--root", root, "--no-log"
       )
       expect(status).to be_success
       expect(stderr).to be_empty

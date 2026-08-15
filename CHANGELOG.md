@@ -21,6 +21,10 @@ and [Semantic Versioning](https://semver.org/); minor releases may change public
 - Service state records the Compose mode, ordered file set and content fingerprint.
 - Kitsune Kit 0.6.0 replaces the fixed service blueprints directly; no legacy blueprint compatibility layer remains.
 
+### Fixed
+
+- Keep local Compose inspection, validation, diff and ejection independent from provider and service credentials.
+
 ### Security
 
 - Customizations reject host namespace/device access, elevated capabilities, unmanaged ports, bind mounts, remote

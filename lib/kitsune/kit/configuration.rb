@@ -216,10 +216,11 @@ module Kitsune
       }.freeze
 
       class Loader
-        def initialize(root: Dir.pwd, env: ENV, config_path: nil)
+        def initialize(root: Dir.pwd, env: ENV, config_path: nil, validate_secrets: true)
           @root = Pathname(root).expand_path
           @env = env
           @config_path = config_path ? Pathname(config_path).expand_path : @root.join(".kitsune/config.yml")
+          @validate_secrets = validate_secrets
         end
 
         def load(environment: nil, overrides: {})
@@ -290,7 +291,7 @@ module Kitsune
             system: System.new(**symbolize(data.fetch("system"))),
             dns: Dns.new(**symbolize(data.fetch("dns")))
           )
-          Validator.new(config, env: @env, root: @root).validate!
+          Validator.new(config, env: @env, root: @root, validate_secrets: @validate_secrets).validate!
           config
         rescue KeyError => e
           raise Errors::ConfigurationError.new("missing configuration value: #{e.key}",
@@ -365,10 +366,11 @@ module Kitsune
         IMAGE = %r{\A[a-z0-9]+(?:[._/-][a-z0-9]+)*(?::[a-zA-Z0-9][a-zA-Z0-9._-]*)?(?:@sha256:[a-f0-9]{64})?\z}
         INSECURE_SECRETS = %w[password postgres redis changeme change-me secret admin].freeze
 
-        def initialize(config, env: ENV, root: Dir.pwd)
+        def initialize(config, env: ENV, root: Dir.pwd, validate_secrets: true)
           @config = config
           @env = env
           @root = Pathname(root).expand_path
+          @validate_secrets = validate_secrets
           @errors = []
         end
 
@@ -442,7 +444,7 @@ module Kitsune
             validate_managed_service(name, service)
           end
           validate_compose(name, service)
-          validate_service_secret(name, service) if service.enabled
+          validate_service_secret(name, service) if service.enabled && @validate_secrets
         end
 
         def validate_compose(name, service)

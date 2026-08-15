@@ -129,6 +129,14 @@ RSpec.describe Kitsune::Kit::Configuration::Loader do
       .to raise_error(Kitsune::Kit::Errors::ConfigurationError, /REDIS_PASSWORD/)
   end
 
+  it "can validate local-only configuration without reading provider or service credentials" do
+    write_config("server" => valid_server, "services" => { "postgres" => { "enabled" => true } })
+
+    config = described_class.new(root: root, env: {}, validate_secrets: false).load
+
+    expect(config.services.postgres.enabled).to be(true)
+  end
+
   it "rejects a missing or overly permissive private key before constructing external adapters" do
     write_config("server" => valid_server, "ssh" => { "key_path" => File.join(root, "missing") })
     expect { described_class.new(root: root, env: env).load }

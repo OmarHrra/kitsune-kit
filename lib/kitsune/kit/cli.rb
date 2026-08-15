@@ -213,7 +213,7 @@ module Kitsune
       option :force, type: :boolean, default: false, desc: "Replace an existing ejected Compose file and backup"
       def service(type, action, subaction = nil)
         execute do
-          app, reporter = build_application
+          app, reporter = action == "compose" ? build_local_application : build_application
           result = if action == "compose"
                      dispatch_service_compose(app, type, subaction)
                    else
@@ -349,6 +349,21 @@ module Kitsune
             maximum_timeout: options[:timeout]
           )
           register_configured_secrets(filter, app.config)
+          [app, reporter]
+        end
+
+        def build_local_application
+          filter = @secret_filter = build_secret_filter
+          bus = Events::Bus.new
+          reporter = build_reporter(filter)
+          bus.subscribe(reporter)
+          subscribe_logger(bus, filter)
+          config = Configuration::Loader.new(
+            root: options[:root], env: ENV, config_path: options[:config], validate_secrets: false
+          ).load(environment: options[:env])
+          app = Application.new(config: config, provider: nil, state_store: StateStore.new(root: options[:root]),
+                                event_bus: bus)
+          register_configured_secrets(filter, config)
           [app, reporter]
         end
 
