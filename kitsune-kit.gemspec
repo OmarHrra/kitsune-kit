@@ -46,6 +46,6 @@ Gem::Specification.new do |spec|
   spec.add_dependency "ed25519", "~> 1.3"
   spec.add_dependency "net-ssh", "~> 7.2"
   spec.add_dependency "ostruct", "~> 0.6"
-  spec.add_dependency "public_suffix", "~> 6.0"
+  spec.add_dependency "public_suffix", ">= 6", "< 8"
   spec.add_dependency "thor", "~> 1.3"
 end
